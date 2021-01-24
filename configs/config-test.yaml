@@ -1,0 +1,40 @@
+server:
+  http:
+    port: 58080
+  https:
+    port: 58443
+    keyFile: server.key
+    certFile: server.crt
+
+gatlingDir: gatling-charts-highcharts-bundle-3.5.0
+workspaceDir: workspace
+uploadDir: uploads
+
+heartbeat:
+  enabled: false
+  frequency: 15s
+
+eventNotifiers:
+  - type: sns
+    enabled: false
+    configMap:
+      topicArn: some-topic-arn
+      region: some-region
+  - type: http
+    enabled: true
+    configMap:
+      url: http://localhost:58080/blackhole
+
+uploaders:
+  - type: s3
+    enabled: false
+    configMap:
+      region: some-region
+      s3url: s3://some-bucket
+
+downloaders:
+  s3:
+    enabled: false
+    configMap:
+      region: some-region
+
