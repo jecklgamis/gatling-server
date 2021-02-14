@@ -13,7 +13,8 @@ func TestUploadS3File(t *testing.T) {
 		t.Skip()
 	}
 	s3Ops := NewS3Manager(env.GetOrPanic("AWS_REGION"))
-	err := s3Ops.Upload(env.GetOrPanic("GATLING_SERVER_INCOMING_BUCKET"),
+	bucket, _, err := ParseS3Uri(env.GetOrPanic("GATLING_SERVER_INCOMING_S3_URL"))
+	err = s3Ops.Upload(bucket,
 		"some-task-id/some.txt", "testdata/some.txt")
 	test.Assertf(t, err == nil, "failed to upload file to s3")
 }
@@ -24,8 +25,8 @@ func TestDownloadS3File(t *testing.T) {
 	}
 	dir, _ := ioutil.TempDir("", "")
 	s3Ops := NewS3Manager(env.GetOrPanic("AWS_REGION"))
-	storePath, err := s3Ops.Download(env.GetOrPanic("GATLING_SERVER_INCOMING_BUCKET"),
-		"some-folder/SingleFileExampleSimulation.scala", dir)
+	bucket, _, err := ParseS3Uri(env.GetOrPanic("GATLING_SERVER_INCOMING_S3_URL"))
+	storePath, err := s3Ops.Download(bucket, "some-folder/SingleFileExampleSimulation.scala", dir)
 	test.Assertf(t, err == nil, "failed to download file to s3 : %v", err)
 	test.Assertf(t, fileioutil.FileExist(*storePath), "expecting a file to exist")
 }

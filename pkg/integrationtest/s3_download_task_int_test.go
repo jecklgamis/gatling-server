@@ -8,6 +8,7 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/s3"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
 	"github.com/jecklgamis/gatling-server/pkg/waiter"
+	"github.com/spf13/viper"
 	"net/http"
 	"strings"
 	"testing"
@@ -18,6 +19,8 @@ func TestDownloadSingleFileSimulationFromS3(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
+	viper.Set("DOWNLOADERS.S3.ENABLED", "true")
+	viper.Set("DOWNLOADERS.S3.CONFIGMAP.REGION", env.GetOrPanic("AWS_REGION"))
 	baseUrl := startServer()
 	waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
 	s3url := env.GetOrPanic("GATLING_SERVER_INCOMING_S3_URL")
