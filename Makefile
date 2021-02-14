@@ -71,8 +71,8 @@ test:
 test-all:
 	@echo Running all tests
 	@echo Requires env : AWS_REGION=some-aws-region
-	@echo Requires env : GATLING_SERVER_INCOMING_BUCKET=some-s3-bucket
-	@echo Requires env : GATLING_SERVER_RESULTS_BUCKET=some-s3-bucket
+	@echo Requires env : GATLING_SERVER_INCOMING_S3_URL=some-s3-url
+	@echo Requires env : GATLING_SERVER_RESULTS_S3_URL=some-s3-url
 	@go test ./...
 test-coverage:
 	@echo Running tests with coverage

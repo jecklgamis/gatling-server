@@ -61,7 +61,7 @@ func (s *S3Manager) Download(bucket string, key string, dir string) (*string, er
 	if !fileioutil.DirExists(dir) {
 		return nil, fmt.Errorf("destination dir does not exist")
 	}
-	log.Printf("Downloading  %s from %s", key, bucket)
+	log.Printf("Downloading %s from %s", key, bucket)
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		Config:            aws.Config{Region: aws.String(s.region)},
 		SharedConfigState: session.SharedConfigEnable,

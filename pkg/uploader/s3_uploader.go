@@ -26,7 +26,7 @@ func (u *S3Uploader) Upload(taskId string, userFilesDir *workspace.UserFilesDir)
 		log.Println("Failed to upload artifacts :", err)
 		return err
 	}
-	err = u.s3Ops.Upload(bucket, filepath.Join(key, taskId), filepath.Join(userFilesDir.BaseDir, "results.tar.gz"))
+	err = u.s3Ops.Upload(bucket, filepath.Join(key, taskId, "results.tar.gz"), filepath.Join(userFilesDir.BaseDir, "results.tar.gz"))
 	if err != nil {
 		log.Println("Failed to upload results :", err)
 		return err
