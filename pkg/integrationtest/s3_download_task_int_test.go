@@ -44,5 +44,6 @@ func TestDownloadSingleFileSimulationFromS3(t *testing.T) {
 	test.Assert(t, resp.Header.Get("Content-Type") == "application/json", "unexpected content type")
 	var entity = &api.SubmitTaskResponse{}
 	err = json.NewDecoder(resp.Body).Decode(&entity)
+	test.Assertf(t, err == nil, "unable to parse response :%v", err)
 	validateArtifacts(t, baseUrl, entity.TaskId)
 }

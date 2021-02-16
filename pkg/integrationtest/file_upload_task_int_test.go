@@ -71,10 +71,11 @@ func TestSubmitPackagedSimulation(t *testing.T) {
 	}
 	uploadUrl := fmt.Sprintf("%s/task/upload/http", baseUrl)
 	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-test-example-user-files.tar.gz", kv)
-	test.Assertf(t, err == nil, "Unable to upload : %v", err)
+	test.Assertf(t, err == nil, "unable to upload : %v", err)
 	test.Assert(t, resp.StatusCode == http.StatusOK, "expecting 200")
 	var entity = &api.SubmitTaskResponse{}
 	err = json.NewDecoder(resp.Body).Decode(&entity)
+	test.Assertf(t, err == nil, "unable to parse response : %v", err)
 	validateArtifacts(t, baseUrl, entity.TaskId)
 
 }
@@ -96,6 +97,7 @@ func TestAbortTask(t *testing.T) {
 	test.Assert(t, resp.StatusCode == http.StatusOK, "expecting 200")
 	var entity = &api.SubmitTaskResponse{}
 	err = json.NewDecoder(resp.Body).Decode(&entity)
+	test.Assertf(t, err == nil, "unable to parse response : %v", err)
 
 	time.Sleep(3 * time.Second)
 	abortUrl := fmt.Sprintf("%s/task/abort/%s", baseUrl, entity.TaskId)

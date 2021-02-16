@@ -37,6 +37,7 @@ func TestReadFile(t *testing.T) {
 	test.Assert(t, err == nil, "unable to create file")
 	test.Assert(t, fileioutil.FileExist(consoleLog), "expecting console.log to exist")
 	content, err := workspace.ReadFile("some-id", "console.log")
+	test.Assert(t, err == nil, "unable to read file")
 	test.Assert(t, string(content) == logContent, "unable read console.log")
 }
 
