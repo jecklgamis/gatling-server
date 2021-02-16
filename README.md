@@ -1,5 +1,7 @@
 ## gatling-server
 
+![Go](https://github.com/jecklgamis/gatling-server/workflows/Go/badge.svg?branch=main)
+
 gatling-server is an API server for [Gatling](https://gatling.io/) OSS. 
 
 Heads up: this is currently in alpha testing but feel free to try the latest Docker image from Docker Hub.
