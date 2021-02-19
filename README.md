@@ -6,7 +6,7 @@ gatling-server is an API server for [Gatling](https://gatling.io/) OSS.
 
 Heads up: this is currently in alpha testing but feel free to try the latest Docker image from Docker Hub.
 
-Security warning: The server can executable arbitrary code as Gatling simulations are normal Scala codes themselves.
+Security warning: The server can execute arbitrary code as Gatling simulations are normal Scala codes themselves.
 Use at your own risk.
 
 ## Current Features
