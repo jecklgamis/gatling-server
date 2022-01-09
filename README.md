@@ -128,12 +128,66 @@ See [gatling-test-example](git@github.com:jecklgamis/gatling-test-example.git) f
 There is no tooling on this at the moment, you can simply package your simulations into `tar.gz`. Ensure it 
 contains the following top level directories:
 ```
-simulations
-bodies
-resources
-binaries
+simulations (should contain simulation classes)
+resources (should contain feeder and data files)
+lib (should contain external jar dependencies) 
 ```
-See `scripts/package-simulations.sh` for reference script.
+
+The `lib` directory should contain the external jar dependencies, if any. If you're using Maven, you can use the
+dependency plugin to copy it to one location before archiving.  
+
+```xml
+       <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>copy</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeGroupIds>org.json4s</includeGroupIds>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+```
+
+
+See `scripts/package-artifacts.sh` for reference script.
+
+```
+#!/usr/bin/env bash
+
+## This utility packages simulations and resources into a tar.gz that can be fed into the gatling-server.
+## See https://github.com/jecklgamis/gatling-server
+
+CURRENT_DIR=$(pwd)
+
+NAME=gatling-test-example
+USER_FILES_DIR=${NAME}-user-files
+TAR_GZ_FILE=${USER_FILES_DIR}.tar.gz
+
+rm -rf ${USER_FILES_DIR}
+mkdir -p ${USER_FILES_DIR}/simulations
+mkdir -p ${USER_FILES_DIR}/bodies
+mkdir -p ${USER_FILES_DIR}/resources
+mkdir -p ${USER_FILES_DIR}/binaries
+
+cp -rf src/main/scala/* ${USER_FILES_DIR}/simulations/
+[[ $(ls -A "${USER_FILES_DIR}/bodies/") ]] && cp -rf src/main/resources/bodies/* ${USER_FILES_DIR}/bodies/
+[[ $(ls -A "${USER_FILES_DIR}/resources/") ]] && cp -rf src/main/resources/data/* ${USER_FILES_DIR}/resources/
+[[ $(ls -A "target/dependency") ]] && cp -rf target/dependency/* ${USER_FILES_DIR}/lib/
+
+rm -f ${TAR_GZ_FILE}
+tar cvzf ${TAR_GZ_FILE} ${USER_FILES_DIR}
+
+echo "Created ${CURRENT_DIR}/${TAR_GZ_FILE}"
+```
+
 
 Example `gatling-test-example-user-files.tar.gz` contents
 ```

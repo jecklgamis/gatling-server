@@ -60,6 +60,7 @@ func (g *Gatling) RunSimulation(commandOps cmdexec.CommandExecutionOps, task *Ta
 		"--binaries-folder", userFilesDir.Binaries)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("JAVA_OPTS=%s", task.JavaOpts))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("USER_LIB_DIR=%s/*", userFilesDir.Libraries))
 	err := commandOps.ExecuteAndLog(cmd, filepath.Join(task.UserFilesDir.BaseDir, "console.log"))
 	return cmd, err
 }

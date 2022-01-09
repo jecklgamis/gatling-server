@@ -12,6 +12,7 @@ type UserFilesDir struct {
 	BaseDir     string
 	Simulations string
 	Binaries    string
+	Libraries   string
 	Resources   string
 	Results     string
 }
@@ -32,7 +33,9 @@ func NewUserFilesDir(baseDir string) (*UserFilesDir, error) {
 		Simulations: filepath.Join(baseDir, "simulations"),
 		Binaries:    filepath.Join(baseDir, "binaries"),
 		Resources:   filepath.Join(baseDir, "resources"),
-		Results:     filepath.Join(baseDir, "results")}
+		Results:     filepath.Join(baseDir, "results"),
+		Libraries:   filepath.Join(baseDir, "lib"),
+	}
 	if err := userFilesDir.create(0744); err != nil {
 		return nil, err
 	}

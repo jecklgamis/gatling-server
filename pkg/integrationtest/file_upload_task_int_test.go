@@ -26,7 +26,7 @@ func startServer() (baseUrl string) {
 	go func() {
 		viper.Set("SERVER.HTTP.PORT", fmt.Sprintf("%d", port))
 		viper.Set("SERVER.HTTPS.PORT", fmt.Sprintf("%d", test.UnusedPort()))
-		viper.Set("GATLINGDIR", "../../gatling-charts-highcharts-bundle-3.5.0")
+		viper.Set("GATLINGDIR", "../../gatling-charts-highcharts-bundle-3.7.3")
 		viper.Set("UPLOADDIR", uploadDir)
 		viper.Set("WORKSPACEDIR", workspaceDir)
 		server.Start()

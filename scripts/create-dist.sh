@@ -25,7 +25,7 @@ mkdir -p ${DIST_DIR}/configs
 cp bin/gatling-server-${TARGET_PLATFORM} ${DIST_DIR}/bin/gatling-server
 cp -rf configs/* ${DIST_DIR}/configs/
 
-GATLING_BUNDLE=gatling-charts-highcharts-bundle-3.5.0-bundle.zip
+GATLING_BUNDLE=gatling-charts-highcharts-bundle-3.7.3-bundle.zip
 cp ${GATLING_BUNDLE} ${DIST_DIR} && unzip ${GATLING_BUNDLE} -d ${DIST_DIR} >/dev/null 2>&1 && rm -f ${DIST_DIR}/${GATLING_BUNDLE}
 
 cat <<'EOF' >${DIST_DIR}/run-server.sh

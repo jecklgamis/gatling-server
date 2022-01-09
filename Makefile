@@ -14,6 +14,7 @@ endif
 default: help
 help:
 	@echo Makefile targets
+	@echo make up - build and run Docker image
 	@echo make dist - build server binaries
 	@echo make image - build docker image
 	@echo make run - run Docker image
@@ -22,7 +23,8 @@ help:
 	@echo make test-coverage - run tests with coverage
 	@echo make clean - delete built artifacts
 	@echo make release - release distribution
-dist: clean test-coverage server-binaries ssl-certs
+dist-quick: clean server-binaries ssl-certs
+dist: test-coverage dist-quick
 release:
 	@echo "Check 1. Have you updated scripts/release-version file?"
 	@echo "Check 2. Is make dist successful?"
@@ -32,11 +34,11 @@ release:
 	@TARGET_OS=linux TARGET_ARCH=amd64 scripts/create-dist.sh
 	@TARGET_OS=darwin TARGET_ARCH=amd64 scripts/create-dist.sh
 	@$(CURDIR)/scripts/create-relnotes.sh
-up: dist image run
+up: dist-quick image run
 image:
 	@docker build -t $(IMAGE_NAME):$(IMAGE_TAG) -t $(IMAGE_NAME):latest .
 run:
-	docker run --memory 1g --cpus 1.5 -p 58080:58080 -p 58443:8443   -i -t $(IMAGE_NAME):$(IMAGE_TAG)
+	docker run --rm -v $(HOME)/.kube/config:/home/app/.kube/config -p 58080:58080 -p 58443:8443  -e DO_TOKEN=$(DO_TOKEN) -i -t $(IMAGE_NAME):$(IMAGE_TAG)
 run-bash:
 	@docker run -i -t $(IMAGE_NAME):$(IMAGE_TAG) /bin/bash
 login:
@@ -85,4 +87,5 @@ push:
 	@echo "$(IMAGE_TAG)}"
 	docker image push $(IMAGE_NAME):$(IMAGE_TAG)
 	docker image push $(IMAGE_NAME):latest
+
 

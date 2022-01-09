@@ -18,6 +18,7 @@ mkdir -p ${USER_FILES_DIR}/binaries
 cp -rf src/main/scala/* ${USER_FILES_DIR}/simulations/
 [[ $(ls -A "${USER_FILES_DIR}/bodies/") ]] && cp -rf src/main/resources/bodies/* ${USER_FILES_DIR}/bodies/
 [[ $(ls -A "${USER_FILES_DIR}/resources/") ]] && cp -rf src/main/resources/data/* ${USER_FILES_DIR}/resources/
+[[ $(ls -A "target/dependency") ]] && cp -rf target/dependency/* ${USER_FILES_DIR}/lib/
 
 rm -f ${TAR_GZ_FILE}
 tar cvzf ${TAR_GZ_FILE} ${USER_FILES_DIR}
