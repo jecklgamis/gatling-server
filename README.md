@@ -17,7 +17,7 @@ Heads up: this is currently in alpha testing but feel free to try the latest Doc
 
 ## Getting Started
 
-Start the server using Docker image available from Docker Hub:
+Start the server using the Docker image available from Docker Hub:
 
 ```bash
 docker run -it -p 58080:58080 jecklgamis/gatling-server:latest
@@ -33,14 +33,13 @@ curl http://localhost:58080/buildInfo
 
 Gatling tasks are submitted via HTTP endpoints. Artifacts referenced in a request can be a single file simulation or a
 packaged simulation. A single file simulation class is a single Scala file that uses only on standard Scala or Gatling
-libraries. Packaged simulations contains resources such as request bodies, feeders, or additional utility classes.
-
-A task identifier is returned in the task submission response. This can be used to query the server for generated
-artifacts such as console logs or Gatling reports.
+libraries. Packaged simulations contains resources such as request bodies, feeders, or additional utility classes. A task 
+identifier is returned in the task submission response. This can be used to query the server for generated artifacts 
+such as console logs or Gatling reports.
 
 ### Submitting Task Using HTTP Upload
 
-Running a single file simulation
+**Running a single file simulation**
 
 Example:
 
@@ -53,7 +52,7 @@ curl -v \
   http://localhost:58080/task/upload/http
 ```
 
-Running a a packaged simulation
+**Running a packaged simulation**
 
 In the [gatling-test-example](https://github.com/jecklgamis/gatling-test-example) project dir
 
@@ -158,14 +157,14 @@ This is the recommended way of submitting packaged simulations.
 simulations, resources, as well as class dependencies (that is, excluding Scala or Gatling dependencies). If you're
 using Maven to author your simulations, this can be done using
 the [maven-shade-plugin](https://maven.apache.org/plugins/maven-shade-plugin/). See
-the [gatling-test-example] (https://github.com/jecklgamis/gatling-test-example) project as an example. It builds
+ [gatling-test-example](https://github.com/jecklgamis/gatling-test-example) project as an example. It builds
 `target/gatling-test-example-lean.jar` which you can submit to the server.
 
 ```bash
 curl -v \
   -F 'file=@./target/gatling-test-example-lean.jar' \
   -F "simulation=gatling.test.example.simulation.ExamplePostSimulation" \
-  -F "javaOpts=-DbaseUrl=http://172.16.0.50:8080 -DdurationMin=1 -DrequestPersecond=1" \
+  -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPersecond=1" \
   http://localhost:58080/task/upload/http
 ```
 
