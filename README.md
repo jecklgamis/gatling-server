@@ -173,7 +173,7 @@ curl -v \
 There is no tooling on this at the moment, you can simply package your simulations into `tar.gz`. Ensure it
 contains the following top level directories:
 ```
-simulations # should contain simulation classes
+simulations # should contain simulation sources
 resources #should contain feeder and data files
 lib #$should contain external jar dependencies 
 ```
