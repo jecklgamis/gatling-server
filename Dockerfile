@@ -16,7 +16,8 @@ ENV GATLING_BUNDLE gatling-charts-highcharts-bundle-3.7.3-bundle.zip
 ENV GATLING_DIST_DIR gatling-charts-highcharts-bundle-3.7.3
 COPY ${GATLING_BUNDLE} /app
 RUN cd /app && unzip ${GATLING_BUNDLE} && rm -f ${GATLING_BUNDLE}
-COPY scripts/gatling-v3.7.3.sh /app/${GATLING_DIST_DIR}/bin/gatling.sh
+COPY scripts/gatling-runner.sh /app/${GATLING_DIST_DIR}/bin/
+COPY scripts/gatling-jar-runner.sh /app/${GATLING_DIST_DIR}/bin/
 
 COPY bin/gatling-server-linux-amd64 /app/bin/gatling-server
 RUN  chmod +x /app/bin/*

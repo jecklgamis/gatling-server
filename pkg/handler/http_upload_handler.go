@@ -100,6 +100,7 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	task := gatling.NewTask(taskId, simulation, javaOpts, userFilesDir)
 
 	if strings.HasSuffix(header.Filename, ".scala") {
+		task.FileType = "scala"
 		destPath := filepath.Join(userFilesDir.Simulations, header.Filename)
 		err := fileioutil.CopyFile(*storePath, destPath)
 		if err != nil {
@@ -107,7 +108,17 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			internalServerError(w)
 			return
 		}
-	} else {
+	} else if strings.HasSuffix(header.Filename, ".jar") {
+		task.FileType = "jar"
+		destPath := filepath.Join(userFilesDir.Simulations, header.Filename)
+		err := fileioutil.CopyFile(*storePath, destPath)
+		if err != nil {
+			log.Println("Unable to copy uploaded file to user files dir : ", err)
+			internalServerError(w)
+			return
+		}
+	} else if strings.HasSuffix(header.Filename, ".tar.gz") {
+		task.FileType = "tar.gz"
 		err := tarutil.Extract(*storePath, userFilesDir.BaseDir)
 		if err != nil {
 			log.Println("Unable to extract archive file :", err)
@@ -115,6 +126,7 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
 	metadata := &Metadata{TaskId: taskId, Simulation: simulation, JavaOpts: javaOpts}
 	err = writeMetadata(userFilesDir.BaseDir, metadata, "metadata.json")
 	if err != nil {
@@ -143,7 +155,8 @@ func writeMetadata(dir string, metadata *Metadata, filename string) error {
 }
 
 func hasValidFileExt(filename string) bool {
-	return strings.HasSuffix(filename, ".scala") || strings.HasSuffix(filename, ".tar.gz")
+	return strings.HasSuffix(filename, ".scala") || strings.HasSuffix(filename, ".jar") ||
+		strings.HasSuffix(filename, ".tar.gz")
 }
 
 func validateFormFields(r *http.Request) error {

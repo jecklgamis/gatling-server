@@ -37,9 +37,13 @@ DEFAULT_JAVA_OPTS="${DEFAULT_JAVA_OPTS} -XX:+UseG1GC -XX:+ParallelRefProcEnabled
 DEFAULT_JAVA_OPTS="${DEFAULT_JAVA_OPTS} -XX:MaxInlineLevel=20 -XX:MaxTrivialSize=12 -XX:-UseBiasedLocking"
 COMPILER_OPTS="-Xss100M $DEFAULT_JAVA_OPTS $JAVA_OPTS"
 
+echo "Using USER_JAR_FILE = ${USER_JAR_FILE}"
+
 # Setup classpaths
-COMPILER_CLASSPATH="$GATLING_HOME/lib/*:$GATLING_CONF:${USER_LIB_DIR}:"
-GATLING_CLASSPATH="$GATLING_HOME/lib/*:$GATLING_HOME/user-files/resources:$GATLING_CONF:${USER_LIB_DIR}:"
+COMPILER_CLASSPATH="$GATLING_HOME/lib/*:$GATLING_CONF:${USER_JAR_FILE}:"
+GATLING_CLASSPATH="$GATLING_HOME/lib/*:$GATLING_HOME/user-files/resources:$GATLING_CONF:${USER_JAR_FILE}:"
+
+echo "Using GATLING_CLASSPATH=${GATLING_CLASSPATH}"
 
 # Use the extra compiler options flag only if they are provided
 if [ -n "$EXTRA_SCALAC_OPTIONS" ]; then
@@ -47,6 +51,6 @@ if [ -n "$EXTRA_SCALAC_OPTIONS" ]; then
 fi
 
 # Run the compiler
-"$JAVA" $COMPILER_OPTS -cp "$COMPILER_CLASSPATH" io.gatling.compiler.ZincCompiler $EXTRA_COMPILER_OPTIONS "$@" 2> /dev/null
+#"$JAVA" $COMPILER_OPTS -cp "$COMPILER_CLASSPATH" io.gatling.compiler.ZincCompiler $EXTRA_COMPILER_OPTIONS "$@" 2> /dev/null
 # Run Gatling
 "$JAVA" $DEFAULT_JAVA_OPTS $JAVA_OPTS -cp "$GATLING_CLASSPATH" io.gatling.app.Gatling "$@"
