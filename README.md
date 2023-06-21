@@ -21,7 +21,7 @@ Heads up: this is currently in alpha testing but feel free to try the latest Doc
 Start the server using the Docker image available from Docker Hub:
 
 ```bash
-docker run -it -p 58080:58080 jecklgamis/gatling-server:latest
+docker run -it -p 58080:58080 jecklgamis/gatling-server:main
 ```
 
 Ensure it's up by hitting the `/buildInfo` endpoint:
