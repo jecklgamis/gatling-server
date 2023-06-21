@@ -64,7 +64,7 @@ func TestAbortTask(t *testing.T) {
 
 func createSomeGatlingTask() *gatling.Task {
 	tmpDir, _ := ioutil.TempDir("", "")
-	userFilesDir, _ := workspace.NewUserFilesDir(filepath.Join(tmpDir, "workspace"))
+	userFilesDir, _ := workspace.NewUserFilesDir(filepath.Join(tmpDir, "repos"))
 	fileioutil.CopyFile("testdata/SingleFileExampleSimulation.scala",
 		fmt.Sprintf("%s/SingleFileExampleSimulation.scala",
 			userFilesDir.Simulations))

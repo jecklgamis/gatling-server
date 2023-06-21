@@ -7,7 +7,7 @@ server:
     certFile: configs/server.crt
 
 gatlingDir: gatling-charts-highcharts-bundle-3.7.3
-workspaceDir: workspace
+workspaceDir: repos
 uploadDir: uploads
 
 heartbeat:

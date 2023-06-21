@@ -22,7 +22,7 @@ func startServer() (baseUrl string) {
 	os.Setenv("APP_ENVIRONMENT", "dev")
 	port := test.UnusedPort()
 	uploadDir, _ := ioutil.TempDir("", "uploads")
-	workspaceDir, _ := ioutil.TempDir("", "workspace")
+	workspaceDir, _ := ioutil.TempDir("", "repos")
 	go func() {
 		viper.Set("SERVER.HTTP.PORT", fmt.Sprintf("%d", port))
 		viper.Set("SERVER.HTTPS.PORT", fmt.Sprintf("%d", test.UnusedPort()))

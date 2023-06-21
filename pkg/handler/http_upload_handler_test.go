@@ -92,7 +92,7 @@ func someTaskManager() *taskmanager.TaskManager {
 }
 
 func someWorkspace() *workspace.Workspace {
-	dir, _ := ioutil.TempDir("", "workspace")
+	dir, _ := ioutil.TempDir("", "repos")
 	return workspace.NewWorkspace(dir)
 }
 
