@@ -61,7 +61,6 @@ gatling-server-linux-amd64:
 clean:
 	@rm -rf dist
 	@rm -f $(CURDIR)/bin/*
-	@go clean -testcache
 	@rm -f server.crt
 	@rm -f server.key
 ssl-certs:
