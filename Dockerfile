@@ -12,7 +12,7 @@ EXPOSE 8443
 RUN mkdir -p /app/bin
 RUN mkdir -p /app/configs
 
-ARG GATLING_VERSION=3.7.3
+ARG GATLING_VERSION=3.9.5
 ENV GATLING_BUNDLE="gatling-charts-highcharts-bundle-${GATLING_VERSION}"
 ENV GATLING_BUNDLE_ZIP="${GATLING_BUNDLE}-bundle.zip"
 ENV GATLING_DOWNLOAD_URL=https://repo1.maven.org/maven2/io/gatling/highcharts/gatling-charts-highcharts-bundle/${GATLING_VERSION}/${GATLING_BUNDLE_ZIP}

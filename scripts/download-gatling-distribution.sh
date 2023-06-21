@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-GATLING_VERSION=3.7.3
+GATLING_VERSION=3.9.5
 
 DOWNLOAD_URL=https://repo1.maven.org/maven2/io/gatling/highcharts/gatling-charts-highcharts-bundle/${GATLING_VERSION}
 DIST_NAME="gatling-charts-highcharts-bundle-${GATLING_VERSION}"

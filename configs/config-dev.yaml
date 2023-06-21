@@ -6,7 +6,7 @@ server:
     keyFile: server.key
     certFile: server.crt
 
-gatlingDir: gatling-charts-highcharts-bundle-3.7.3
+gatlingDir: gatling-charts-highcharts-bundle-3.9.5
 workspaceDir: workspace
 uploadDir: uploads
 
