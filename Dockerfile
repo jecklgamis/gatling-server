@@ -1,10 +1,11 @@
-FROM ubuntu:22.04
-MAINTAINER Jerrico Gamis <jecklgamis@gmail.com>
+FROM ubuntu:24.04
+LABEL org.opencontainers.image.authors="jecklgamis@gmail.com"
 
-RUN apt update -y && apt install -y unzip openjdk-8-jdk-headless curl dumb-init
+
+RUN apt update -y && apt install -y unzip openjdk-21-jdk-headless curl dumb-init
 RUN rm -rf /var/lib/apt/lists/*
 
-ENV APP_ENVIRONMENT dev
+ENV APP_ENVIRONMENT=dev
 
 EXPOSE 8080
 EXPOSE 8443
