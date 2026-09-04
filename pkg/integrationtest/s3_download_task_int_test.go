@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func TestDownloadSingleFileSimulationFromS3(t *testing.T) {
+func TestDownloadJarSimulationFromS3(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
@@ -28,8 +28,8 @@ func TestDownloadSingleFileSimulationFromS3(t *testing.T) {
 	test.Assert(t, err == nil, "unable to parse s3 url")
 
 	request := &api.S3DownloadTaskRequest{
-		Url:        fmt.Sprintf("s3://%s/SingleFileExampleSimulation.scala", bucket),
-		Simulation: "gatling.test.example.simulation.SingleFileExampleSimulation",
+		Url:        fmt.Sprintf("s3://%s/gatling-test-example-lean.jar", bucket),
+		Simulation: "gatling.test.example.simulation.ExampleSimulation",
 		JavaOpts:   "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPerSecond=1"}
 
 	requestBytes, err := json.Marshal(request)

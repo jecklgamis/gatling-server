@@ -21,16 +21,16 @@ func (r RunSimulationFunc) RunSimulation(commandOps cmdexec.CommandExecutionOps,
 }
 
 type Gatling struct {
-	BaseDir string
+	ScriptsDir string
 }
 
-func NewGatling(baseDir string) *Gatling {
-	if !filepath.IsAbs(baseDir) {
-		log.Println("Base dir is not absolute", baseDir)
+func NewGatling(scriptsDir string) *Gatling {
+	if !filepath.IsAbs(scriptsDir) {
+		log.Println("Scripts dir is not absolute", scriptsDir)
 		return nil
 	}
-	log.Println("Using gatling distribution", baseDir)
-	return &Gatling{baseDir}
+	log.Println("Using scripts dir", scriptsDir)
+	return &Gatling{scriptsDir}
 }
 
 type Task struct {
@@ -53,26 +53,12 @@ func NewTask(id string, simulation string, javaOpts string, userFilesDir *worksp
 func (g *Gatling) RunSimulation(commandOps cmdexec.CommandExecutionOps, task *Task) (*exec.Cmd, error) {
 	log.Println("Running simulations from", task.UserFilesDir.BaseDir)
 	userFilesDir := task.UserFilesDir
-	var cmd *exec.Cmd = nil
-	if task.FileType == "jar" {
-		gatlingSh := fmt.Sprintf("%s/bin/gatling-jar-runner.sh", g.BaseDir)
-		cmd = exec.Command(gatlingSh, "-s", task.Simulation,
-			"--results-folder", userFilesDir.Results)
-		cmd.Env = os.Environ()
-		cmd.Env = append(cmd.Env, fmt.Sprintf("JAVA_OPTS=%s", task.JavaOpts))
-		cmd.Env = append(cmd.Env, fmt.Sprintf("USER_JAR_FILE=%s/*", userFilesDir.Simulations))
-	} else {
-		gatlingSh := fmt.Sprintf("%s/bin/gatling-runner.sh", g.BaseDir)
-		cmd = exec.Command(gatlingSh,
-			"-s", task.Simulation,
-			"--simulations-folder", userFilesDir.Simulations,
-			"--resources-folder", userFilesDir.Resources,
-			"--results-folder", userFilesDir.Results,
-			"--binaries-folder", userFilesDir.Binaries)
-		cmd.Env = os.Environ()
-		cmd.Env = append(cmd.Env, fmt.Sprintf("JAVA_OPTS=%s", task.JavaOpts))
-		cmd.Env = append(cmd.Env, fmt.Sprintf("USER_LIB_DIR=%s/*", userFilesDir.Libraries))
-	}
+	gatlingSh := fmt.Sprintf("%s/gatling-jar-runner.sh", g.ScriptsDir)
+	cmd := exec.Command(gatlingSh, "-s", task.Simulation,
+		"--results-folder", userFilesDir.Results)
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, fmt.Sprintf("JAVA_OPTS=%s", task.JavaOpts))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("JAR_FILE=%s/*", userFilesDir.Simulations))
 	log.Printf("About to execute command [%v]\n", cmd)
 	err := commandOps.ExecuteAndLog(cmd, filepath.Join(task.UserFilesDir.BaseDir, "console.log"))
 	return cmd, err

@@ -9,7 +9,7 @@ Heads up: this is currently in alpha testing but feel free to try the latest Doc
 
 ## Features
 
-* Run single file or packaged simulations (simulations, and resources packaged as jar file)
+* Run simulations packaged as a jar file (simulations and resources bundled together)
 * Task submission via HTTP upload or S3 download
 * Artifacts upload to S3 (metadata, console log, results, etc.)
 * Endpoints for task metadata, console log, and results, etc.
@@ -32,26 +32,12 @@ curl http://localhost:58080/buildInfo
 
 ### Submitting Tasks
 
-Gatling tasks are submitted via HTTP endpoints. Artifacts referenced in a request can be a single file simulation or a
-packaged simulation. A single file simulation class is a single Scala file that uses only on standard Scala or Gatling
-libraries. Packaged simulations contains resources such as request bodies, feeders, or additional utility classes. A task 
-identifier is returned in the task submission response. This can be used to query the server for generated artifacts 
-such as console logs or Gatling reports.
+Gatling tasks are submitted via HTTP endpoints. Artifacts referenced in a request must be a simulation packaged as a
+jar file, containing the compiled simulation classes and resources such as request bodies, feeders, or additional
+utility classes. A task identifier is returned in the task submission response. This can be used to query the server
+for generated artifacts such as console logs or Gatling reports.
 
 ### Submitting Task Using HTTP Upload
-
-**Running a single file simulation**
-
-Example:
-
-```bash
-$ cd test
-curl -v \
-  -F 'file=@./testdata/SingleFileExampleSimulation.scala' \
-  -F "simulation=gatling.test.example.simulation.SingleFileExampleSimulation" \
-  -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=0.5 -DrequestPersecond=1" \
-  http://localhost:58080/task/upload/http
-```
 
 **Running a packaged simulation**
 
@@ -88,8 +74,8 @@ request.json:
 
 ```
 {
-  "url": "s3://gatling-server-incoming/SingleFileExampleSimulation.scala",
-  "simulation": "gatling.test.example.simulation.SingleFileExampleSimulation",
+  "url": "s3://gatling-server-incoming/gatling-test-example-lean.jar",
+  "simulation": "gatling.test.example.simulation.ExamplePostSimulation",
   "javaOpts": "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPerSecond=1"
 }
 ```
@@ -152,8 +138,6 @@ See the following examples depending on the language you're using:
 
 ## Packaging Simulations In Jar Format
 
-This is the recommended way of submitting packaged simulations.
-
 `gatling-server` supports execution of simulations packaged as jar file. The jar should contain the compiled
 simulations, resources, as well as class dependencies (that is, excluding Scala or Gatling dependencies). If you're
 using Maven to author your simulations, this can be done using
@@ -168,18 +152,3 @@ curl -v \
   -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPersecond=1" \
   http://localhost:58080/task/upload/http
 ```
-
-## Packaging Simulations In tar.gz Format
-There is no tooling on this at the moment, you can simply package your simulations into `tar.gz`. Ensure it
-contains the following top level directories:
-```
-simulations # should contain simulation sources
-resources #should contain feeder and data files
-lib #$should contain external jar dependencies 
-```
-
-The `lib` directory should contain the external jar dependencies, if any. If you're using Maven, you can use the
-dependency plugin to copy it to one location before archiving.
-
-
-See [package-artifacts.sh](https://github.com/jecklgamis/gatling-test-example/blob/main/package-artifacts.sh) for reference script.

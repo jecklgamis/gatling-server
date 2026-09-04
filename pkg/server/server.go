@@ -47,8 +47,8 @@ func Start() {
 	configureEventNotifiers(eventBus, config.EventNotifiers)
 	uploaders := configureUploaders(config.Uploaders)
 
-	gatlingDir, _ := filepath.Abs(config.GatlingDir)
-	gatling := gatling.NewGatling(gatlingDir)
+	scriptsDir, _ := filepath.Abs(config.ScriptsDir)
+	gatling := gatling.NewGatling(scriptsDir)
 	taskManager := taskmanager.NewTaskManager(gatling, eventBus.EventC, uploaders)
 	workspaceDir, _ := filepath.Abs(config.WorkspaceDir)
 	workspace := workspace.NewWorkspace(workspaceDir)

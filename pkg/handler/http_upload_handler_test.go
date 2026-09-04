@@ -15,24 +15,26 @@ import (
 	"testing"
 )
 
-func TestUploadSingleFileSimulation(t *testing.T) {
+func TestUploadJarSimulation(t *testing.T) {
 	rr := httptest.NewRecorder()
-	createHandler().ServeHTTP(rr, someSingleFileSimulationReq(t))
+	createHandler().ServeHTTP(rr, someJarSimulationReq(t))
 	validateSubmitTaskResponse(t, rr)
 }
 
-func TestUploadPackagedSimulation(t *testing.T) {
-	rr := httptest.NewRecorder()
-	createHandler().ServeHTTP(rr, somePackagedSimulationReq(t))
-	validateSubmitTaskResponse(t, rr)
-}
-
-func TestUploadFileWithPackagedSimulation(t *testing.T) {
-	req := createMultiPartRequest(t, "testdata/gatling-test-example-user-files.tar.gz",
+func TestUploadScalaFileRejected(t *testing.T) {
+	req := createMultiPartRequest(t, "testdata/SingleFileExampleSimulation.scala",
 		"gatling.test.example.simulation.SingleFileExampleSimulation", "")
 	rr := httptest.NewRecorder()
 	createHandler().ServeHTTP(rr, req)
-	test.Assertf(t, rr.Code == http.StatusOK, "unexpected status code %d", rr.Code)
+	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %d", rr.Code)
+}
+
+func TestUploadTarGzFileRejected(t *testing.T) {
+	req := createMultiPartRequest(t, "testdata/gatling-test-example-user-files.tar.gz",
+		"gatling.test.example.simulation.ExampleSimulation", "")
+	rr := httptest.NewRecorder()
+	createHandler().ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %d", rr.Code)
 }
 
 func TestFileUploadWithoutSimulationField(t *testing.T) {
@@ -88,7 +90,7 @@ func createHandler() http.Handler {
 }
 
 func someTaskManager() *taskmanager.TaskManager {
-	return taskmanager.NewTaskManager(gatling.SomeGatlingDist(), make(chan interface{}, 1024), []uploader.GatlingArtifactUploader{})
+	return taskmanager.NewTaskManager(gatling.SomeGatling(), make(chan interface{}, 1024), []uploader.GatlingArtifactUploader{})
 }
 
 func someWorkspace() *workspace.Workspace {
@@ -96,20 +98,14 @@ func someWorkspace() *workspace.Workspace {
 	return workspace.NewWorkspace(dir)
 }
 
-func someSingleFileSimulationReq(t *testing.T) *http.Request {
-	return createMultiPartRequest(t, "testdata/SingleFileExampleSimulation.scala",
-		"gatling.test.example.simulation.SingleFileExampleSimulation",
-		"-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1")
-}
-
-func somePackagedSimulationReq(t *testing.T) *http.Request {
-	return createMultiPartRequest(t, "testdata/gatling-test-example-user-files.tar.gz",
+func someJarSimulationReq(t *testing.T) *http.Request {
+	return createMultiPartRequest(t, "testdata/gatling-test-example-lean.jar",
 		"gatling.test.example.simulation.ExampleSimulation",
 		"-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1")
 }
 
 func someMultipartRequestWithoutSimulationField(t *testing.T) *http.Request {
-	return createMultiPartRequest(t, "testdata/SingleFileExampleSimulation.scala", "",
+	return createMultiPartRequest(t, "testdata/gatling-test-example-lean.jar", "",
 		"-DsomeKey=someValue")
 }
 

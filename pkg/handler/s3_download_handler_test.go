@@ -47,7 +47,7 @@ func TestS3HandlerWithInvalidDownloadedFileExtension(t *testing.T) {
 	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %v", rr.Code)
 }
 
-func TestDownloadSingFileSimulation(t *testing.T) {
+func TestDownloadScalaFileRejected(t *testing.T) {
 	req := createS3DownloadHttpRequest(t,
 		"gatling.test.example.simulation.SingleFileExampleSimulation",
 		"-DbaseUrl=http://localhost:8080 -DdurationMin=0.5 -DrequestPersecond=1",
@@ -56,11 +56,10 @@ func TestDownloadSingFileSimulation(t *testing.T) {
 	s3Ops := s3.NewFakeS3Ops(fileioutil.MustReadFile("testdata/SingleFileExampleSimulation.scala"),
 		tempFile("SingleFileExampleSimulation.scala"), nil)
 	createS3HandlerWith(s3Ops).ServeHTTP(rr, req)
-	test.Assertf(t, rr.Code == http.StatusOK, "unexpected status code %v", rr.Code)
-	validateSubmitTaskResponse(t, rr)
+	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %v", rr.Code)
 }
 
-func TestDownloadPackagedSingleFileSimulation(t *testing.T) {
+func TestDownloadTarGzFileRejected(t *testing.T) {
 	req := createS3DownloadHttpRequest(t,
 		"gatling.test.example.simulation.ExampleSimulation",
 		"-DbaseUrl=http://localhost:8080 -DdurationMin=0.5 -DrequestPersecond=1",
@@ -69,25 +68,25 @@ func TestDownloadPackagedSingleFileSimulation(t *testing.T) {
 	s3Ops := s3.NewFakeS3Ops(fileioutil.MustReadFile("testdata/gatling-test-example-user-files.tar.gz"),
 		tempFile("gatling-test-example-user-files.tar.gz"), nil)
 	createS3HandlerWith(s3Ops).ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %v", rr.Code)
+}
+
+func TestDownloadJarSimulation(t *testing.T) {
+	req := createS3DownloadHttpRequest(t,
+		"gatling.test.example.simulation.ExampleSimulation",
+		"-DbaseUrl=http://localhost:8080 -DdurationMin=0.5 -DrequestPersecond=1",
+		"s3://some-bucket/gatling-test-example-lean.jar")
+	rr := httptest.NewRecorder()
+	s3Ops := s3.NewFakeS3Ops(fileioutil.MustReadFile("testdata/gatling-test-example-lean.jar"),
+		tempFile("gatling-test-example-lean.jar"), nil)
+	createS3HandlerWith(s3Ops).ServeHTTP(rr, req)
 	test.Assertf(t, rr.Code == http.StatusOK, "unexpected status code %v", rr.Code)
 	validateSubmitTaskResponse(t, rr)
 }
 
-func TestDownloadCorruptedTarGz(t *testing.T) {
-	req := createS3DownloadHttpRequest(t,
-		"gatling.test.example.simulation.ExampleSimulation",
-		"-DbaseUrl=http://localhost:8080 -DdurationMin=0.5 -DrequestPersecond=1",
-		"s3://some-bucket/gatling-test-example-user-files.tar.gz")
-	rr := httptest.NewRecorder()
-	s3Ops := s3.NewFakeS3Ops(fileioutil.MustReadFile("testdata/corrupted.tar.gz"),
-		tempFile("corrupted.tar.gz"), nil)
-	createS3HandlerWith(s3Ops).ServeHTTP(rr, req)
-	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %v", rr.Code)
-}
-
 func createS3Handler() http.Handler {
-	s3Ops := s3.NewFakeS3Ops(fileioutil.MustReadFile("testdata/SingleFileExampleSimulation.scala"),
-		tempFile("ExampleSimulation.scala"), nil)
+	s3Ops := s3.NewFakeS3Ops(fileioutil.MustReadFile("testdata/gatling-test-example-lean.jar"),
+		tempFile("ExampleSimulation.jar"), nil)
 	return http.HandlerFunc(NewS3DownloadHandler(someWorkspace(), someTaskManager(), s3Ops).Handle)
 }
 

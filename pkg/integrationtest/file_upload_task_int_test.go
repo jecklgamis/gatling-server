@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jecklgamis/gatling-server/pkg/api"
+	"github.com/jecklgamis/gatling-server/pkg/env"
 	"github.com/jecklgamis/gatling-server/pkg/server"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
 	"github.com/jecklgamis/gatling-server/pkg/uploader"
@@ -26,7 +27,7 @@ func startServer() (baseUrl string) {
 	go func() {
 		viper.Set("SERVER.HTTP.PORT", fmt.Sprintf("%d", port))
 		viper.Set("SERVER.HTTPS.PORT", fmt.Sprintf("%d", test.UnusedPort()))
-		viper.Set("GATLINGDIR", "../../gatling-charts-highcharts-bundle-3.7.3")
+		viper.Set("SCRIPTSDIR", env.GetOrElse("GATLING_TEST_SCRIPTS_DIR", "../../scripts"))
 		viper.Set("UPLOADDIR", uploadDir)
 		viper.Set("WORKSPACEDIR", workspaceDir)
 		server.Start()
@@ -36,29 +37,7 @@ func startServer() (baseUrl string) {
 	return baseUrl
 }
 
-func TestSubmitSingleSimulation(t *testing.T) {
-	if testing.Short() {
-		t.Skip()
-	}
-	baseUrl := startServer()
-	waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
-	kv := map[string]string{
-		"simulation": "gatling.test.example.simulation.SingleFileExampleSimulation",
-		"javaOpts":   "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1",
-	}
-	uploadUrl := fmt.Sprintf("%s/task/upload/http", baseUrl)
-	resp, err := uploader.UploadFile(uploadUrl, "testdata/SingleFileExampleSimulation.scala", kv)
-	test.Assertf(t, err == nil, "failed to upload : %v", err)
-	test.Assertf(t, resp.StatusCode == http.StatusOK, "expecting 200 return")
-
-	var entity = &api.SubmitTaskResponse{}
-	err = json.NewDecoder(resp.Body).Decode(&entity)
-	test.Assertf(t, entity.TaskId != "", "expecting task id in response")
-	test.Assertf(t, err == nil, "failed to decode response :%v", err)
-	validateArtifacts(t, baseUrl, entity.TaskId)
-}
-
-func TestSubmitPackagedSimulation(t *testing.T) {
+func TestSubmitJarSimulation(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
@@ -70,7 +49,7 @@ func TestSubmitPackagedSimulation(t *testing.T) {
 		"javaOpts":   "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1",
 	}
 	uploadUrl := fmt.Sprintf("%s/task/upload/http", baseUrl)
-	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-test-example-user-files.tar.gz", kv)
+	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-test-example-lean.jar", kv)
 	test.Assertf(t, err == nil, "unable to upload : %v", err)
 	test.Assert(t, resp.StatusCode == http.StatusOK, "expecting 200")
 	var entity = &api.SubmitTaskResponse{}
@@ -92,7 +71,7 @@ func TestAbortTask(t *testing.T) {
 		"javaOpts":   "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1",
 	}
 	uploadUrl := fmt.Sprintf("%s/task/upload/http", baseUrl)
-	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-test-example-user-files.tar.gz", kv)
+	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-test-example-lean.jar", kv)
 	test.Assertf(t, err == nil, "unable to upload : %v", err)
 	test.Assert(t, resp.StatusCode == http.StatusOK, "expecting 200")
 	var entity = &api.SubmitTaskResponse{}

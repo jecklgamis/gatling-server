@@ -8,7 +8,6 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/fileioutil"
 	"github.com/jecklgamis/gatling-server/pkg/gatling"
 	"github.com/jecklgamis/gatling-server/pkg/jsonutil"
-	"github.com/jecklgamis/gatling-server/pkg/tarutil"
 	"github.com/jecklgamis/gatling-server/pkg/taskmanager"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
 	"io"
@@ -99,32 +98,13 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	javaOpts := r.FormValue("javaOpts")
 	task := gatling.NewTask(taskId, simulation, javaOpts, userFilesDir)
 
-	if strings.HasSuffix(header.Filename, ".scala") {
-		task.FileType = "scala"
-		destPath := filepath.Join(userFilesDir.Simulations, header.Filename)
-		err := fileioutil.CopyFile(*storePath, destPath)
-		if err != nil {
-			log.Println("Unable to copy uploaded file to user files dir : ", err)
-			internalServerError(w)
-			return
-		}
-	} else if strings.HasSuffix(header.Filename, ".jar") {
-		task.FileType = "jar"
-		destPath := filepath.Join(userFilesDir.Simulations, header.Filename)
-		err := fileioutil.CopyFile(*storePath, destPath)
-		if err != nil {
-			log.Println("Unable to copy uploaded file to user files dir : ", err)
-			internalServerError(w)
-			return
-		}
-	} else if strings.HasSuffix(header.Filename, ".tar.gz") {
-		task.FileType = "tar.gz"
-		err := tarutil.Extract(*storePath, userFilesDir.BaseDir)
-		if err != nil {
-			log.Println("Unable to extract archive file :", err)
-			internalServerError(w)
-			return
-		}
+	task.FileType = "jar"
+	destPath := filepath.Join(userFilesDir.Simulations, header.Filename)
+	err = fileioutil.CopyFile(*storePath, destPath)
+	if err != nil {
+		log.Println("Unable to copy uploaded file to user files dir : ", err)
+		internalServerError(w)
+		return
 	}
 
 	metadata := &Metadata{TaskId: taskId, Simulation: simulation, JavaOpts: javaOpts}
@@ -155,8 +135,7 @@ func writeMetadata(dir string, metadata *Metadata, filename string) error {
 }
 
 func hasValidFileExt(filename string) bool {
-	return strings.HasSuffix(filename, ".scala") || strings.HasSuffix(filename, ".jar") ||
-		strings.HasSuffix(filename, ".tar.gz")
+	return strings.HasSuffix(filename, ".jar")
 }
 
 func validateFormFields(r *http.Request) error {

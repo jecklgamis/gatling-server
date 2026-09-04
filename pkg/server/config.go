@@ -47,7 +47,7 @@ type HeartbeatConfig struct {
 
 type Config struct {
 	Server         ListenerConfig
-	GatlingDir     string
+	ScriptsDir     string
 	WorkspaceDir   string
 	UploadDir      string
 	EventNotifiers []EventNotifierConfig

@@ -21,12 +21,12 @@ echo "VERSION = ${VERSION}"
 rm -rf ${DIST_DIR}
 mkdir -p ${DIST_DIR}/bin
 mkdir -p ${DIST_DIR}/configs
+mkdir -p ${DIST_DIR}/scripts
 
 cp bin/gatling-server-${TARGET_PLATFORM} ${DIST_DIR}/bin/gatling-server
 cp -rf configs/* ${DIST_DIR}/configs/
-
-GATLING_BUNDLE=gatling-charts-highcharts-bundle-3.7.3-bundle.zip
-cp ${GATLING_BUNDLE} ${DIST_DIR} && unzip ${GATLING_BUNDLE} -d ${DIST_DIR} >/dev/null 2>&1 && rm -f ${DIST_DIR}/${GATLING_BUNDLE}
+cp scripts/gatling-jar-runner.sh ${DIST_DIR}/scripts/
+chmod +x ${DIST_DIR}/scripts/gatling-jar-runner.sh
 
 cat <<'EOF' >${DIST_DIR}/run-server.sh
 #!/usr/bin/env bash

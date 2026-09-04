@@ -25,13 +25,13 @@ func internalServerErrorHandler(w http.ResponseWriter, _ *http.Request) {
 
 func TestRunSimulationWithSuccessfulResult(t *testing.T) {
 	task := someGatlingTask(t, "http://localhost:8080")
-	_, err := SomeGatlingDist().RunSimulation(cmdexec.NewFakeCommandExecutor(nil), task)
+	_, err := SomeGatling().RunSimulation(cmdexec.NewFakeCommandExecutor(nil), task)
 	test.Assert(t, err == nil, "expecting nil return")
 }
 
 func TestRunSimulationWithFailedResult(t *testing.T) {
 	task := someGatlingTask(t, "http://some-target-url")
-	_, err := SomeGatlingDist().RunSimulation(cmdexec.NewFakeCommandExecutor(fmt.Errorf("some-error")), task)
+	_, err := SomeGatling().RunSimulation(cmdexec.NewFakeCommandExecutor(fmt.Errorf("some-error")), task)
 	test.Assert(t, err != nil, "expecting error return")
 }
 
@@ -50,7 +50,7 @@ func TestRunSimulation(t *testing.T) {
 		true:  http.HandlerFunc(okHandler),
 		false: http.HandlerFunc(internalServerErrorHandler)}
 
-	gatling := SomeGatlingDist()
+	gatling := SomeGatling()
 	for expectedOk, handler := range handlers {
 		server := httptest.NewServer(handler)
 		task := someGatlingTask(t, server.URL)
@@ -74,7 +74,7 @@ func TestAbortSimulation(t *testing.T) {
 	}
 	server := httptest.NewServer(http.HandlerFunc(okHandler))
 	task := someGatlingTask(t, fmt.Sprintf(server.URL))
-	cmd, _ := SomeGatlingDist().RunSimulation(cmdexec.NewCommandExecutor(), task)
+	cmd, _ := SomeGatling().RunSimulation(cmdexec.NewCommandExecutor(), task)
 	go func() {
 		time.Sleep(3 * time.Second)
 		cmd.Process.Kill()
@@ -87,9 +87,11 @@ func someGatlingTask(t *testing.T, targetUrl string) *Task {
 	userFilesPath, _ := ioutil.TempDir("", "")
 	userFilesDir, _ := workspace.NewUserFilesDir(filepath.Join(userFilesPath, "user-files-dir"))
 	test.Assertf(t, userFilesDir != nil, "nil user files dir")
-	fileioutil.CopyFile("testdata/SingleFileExampleSimulation.scala",
-		fmt.Sprintf("%s/SingleFileExampleSimulation.scala",
+	fileioutil.CopyFile("testdata/gatling-test-example.jar",
+		fmt.Sprintf("%s/gatling-test-example.jar",
 			userFilesDir.Simulations))
-	return NewTask("some-task-id", "gatling.test.example.simulation.SingleFileExampleSimulation",
+	task := NewTask("some-task-id", "gatling.test.example.simulation.ExampleSimulation",
 		fmt.Sprintf("-DbaseUrl=%s -DdurationMin=0.10 -DrequestPerSecond=1", targetUrl), userFilesDir)
+	task.FileType = "jar"
+	return task
 }

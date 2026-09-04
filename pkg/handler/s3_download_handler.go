@@ -7,14 +7,12 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/fileioutil"
 	"github.com/jecklgamis/gatling-server/pkg/gatling"
 	"github.com/jecklgamis/gatling-server/pkg/s3"
-	"github.com/jecklgamis/gatling-server/pkg/tarutil"
 	"github.com/jecklgamis/gatling-server/pkg/taskmanager"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"path/filepath"
-	"strings"
 )
 
 type S3DownloadHandler struct {
@@ -78,17 +76,14 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	task := gatling.NewTask(taskId, request.Simulation, request.JavaOpts, userFilesDir)
-	if strings.HasSuffix(filename, ".scala") {
-		log.Println("Submitting simulation", filename)
-		destPath := fmt.Sprintf("%s/%s", userFilesDir.Simulations, filename)
-		fileioutil.CopyFile(*storePath, destPath)
-	} else {
-		err := tarutil.Extract(*storePath, userFilesDir.BaseDir)
-		if err != nil {
-			log.Println("Unable to extract archive", err)
-			badRequest(w)
-			return
-		}
+	task.FileType = "jar"
+	log.Println("Submitting simulation", filename)
+	destPath := fmt.Sprintf("%s/%s", userFilesDir.Simulations, filename)
+	err = fileioutil.CopyFile(*storePath, destPath)
+	if err != nil {
+		log.Println("Unable to copy downloaded file to user files dir :", err)
+		internalServerError(w)
+		return
 	}
 	metadata := &Metadata{TaskId: taskId, Simulation: request.Simulation, JavaOpts: request.JavaOpts}
 	writeMetadata(userFilesDir.BaseDir, metadata, "metadata.json")
