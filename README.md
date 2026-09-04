@@ -41,12 +41,12 @@ for generated artifacts such as console logs or Gatling reports.
 
 **Running a packaged simulation**
 
-In the [gatling-test-example](https://github.com/jecklgamis/gatling-test-example) project dir
+In the [gatling-scala-example](https://github.com/jecklgamis/gatling-scala-example) project dir
 
 ```bash
 curl -v \
-  -F 'file=@target/gatling-test-example-lean.jar' \
-  -F "simulation=gatling.test.example.simulation.ExamplePostSimulation" \
+  -F 'file=@target/gatling-scala-example.jar' \
+  -F "simulation=gatling.test.example.simulation.ExampleSimulation" \
   -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPersecond=10" \
   http://localhost:58080/task/upload/http
 ```
@@ -74,8 +74,8 @@ request.json:
 
 ```
 {
-  "url": "s3://gatling-server-incoming/gatling-test-example-lean.jar",
-  "simulation": "gatling.test.example.simulation.ExamplePostSimulation",
+  "url": "s3://gatling-server-incoming/gatling-scala-example.jar",
+  "simulation": "gatling.test.example.simulation.ExampleSimulation",
   "javaOpts": "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPerSecond=1"
 }
 ```
@@ -132,23 +132,23 @@ quite flexible, it can be setup as a code alongside with your code base or maint
 
 See the following examples depending on the language you're using:
 
-* [gatling-test-example](https://github.com/jecklgamis/gatling-test-example)
+* [gatling-scala-example](https://github.com/jecklgamis/gatling-scala-example)
 * [gatling-java-example](https://github.com/jecklgamis/gatling-java-example)
 * [gatling-kotlin-example](https://github.com/jecklgamis/gatling-kotlin-example)
 
 ## Packaging Simulations In Jar Format
 
-`gatling-server` supports execution of simulations packaged as jar file. The jar should contain the compiled
-simulations, resources, as well as class dependencies (that is, excluding Scala or Gatling dependencies). If you're
-using Maven to author your simulations, this can be done using
+`gatling-server` supports execution of simulations packaged as a self-contained (uber) jar file. The jar must contain
+the compiled simulations, resources, and all class dependencies, including Scala and Gatling itself, since the server
+runs it directly off its own classpath. If you're using Maven to author your simulations, this can be done using
 the [maven-shade-plugin](https://maven.apache.org/plugins/maven-shade-plugin/). See
- [gatling-test-example](https://github.com/jecklgamis/gatling-test-example) project as an example. It builds
-`target/gatling-test-example-lean.jar` which you can submit to the server.
+ [gatling-scala-example](https://github.com/jecklgamis/gatling-scala-example) project as an example. It builds
+`target/gatling-scala-example.jar` which you can submit to the server.
 
 ```bash
 curl -v \
-  -F 'file=@./target/gatling-test-example-lean.jar' \
-  -F "simulation=gatling.test.example.simulation.ExamplePostSimulation" \
+  -F 'file=@./target/gatling-scala-example.jar' \
+  -F "simulation=gatling.test.example.simulation.ExampleSimulation" \
   -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPersecond=1" \
   http://localhost:58080/task/upload/http
 ```

@@ -87,8 +87,8 @@ func someGatlingTask(t *testing.T, targetUrl string) *Task {
 	userFilesPath, _ := ioutil.TempDir("", "")
 	userFilesDir, _ := workspace.NewUserFilesDir(filepath.Join(userFilesPath, "user-files-dir"))
 	test.Assertf(t, userFilesDir != nil, "nil user files dir")
-	fileioutil.CopyFile("testdata/gatling-test-example.jar",
-		fmt.Sprintf("%s/gatling-test-example.jar",
+	fileioutil.CopyFile("testdata/gatling-scala-example.jar",
+		fmt.Sprintf("%s/gatling-scala-example.jar",
 			userFilesDir.Simulations))
 	task := NewTask("some-task-id", "gatling.test.example.simulation.ExampleSimulation",
 		fmt.Sprintf("-DbaseUrl=%s -DdurationMin=0.10 -DrequestPerSecond=1", targetUrl), userFilesDir)

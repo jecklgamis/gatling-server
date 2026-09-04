@@ -12,8 +12,8 @@ import (
 
 func TestCopyFile(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "")
-	src := "testdata/gatling-test-example-user-files.tar.gz"
-	dst := filepath.Join(dir, "gatling-test-example-user-files.tar.gz")
+	src := "testdata/gatling-scala-example-user-files.tar.gz"
+	dst := filepath.Join(dir, "gatling-scala-example-user-files.tar.gz")
 	err := CopyFile(src, dst)
 	test.Assertf(t, err == nil, "failed to copy file : %v", err)
 	test.Assertf(t, FileExist(dst), "expected file to exist")

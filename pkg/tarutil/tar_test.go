@@ -10,7 +10,7 @@ import (
 
 func TestExtractTarGz(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "")
-	err := Extract("testdata/gatling-test-example-user-files.tar.gz", dir)
+	err := Extract("testdata/gatling-scala-example-user-files.tar.gz", dir)
 	test.Assert(t, err == nil, "failed to extract archive")
 	test.Assertf(t, fileioutil.DirExists(filepath.Join(dir, "bodies")), "expecting bodies directory")
 	test.Assertf(t, fileioutil.DirExists(filepath.Join(dir, "resources")), "expecting resources directory")

@@ -30,7 +30,7 @@ func TestUploadScalaFileRejected(t *testing.T) {
 }
 
 func TestUploadTarGzFileRejected(t *testing.T) {
-	req := createMultiPartRequest(t, "testdata/gatling-test-example-user-files.tar.gz",
+	req := createMultiPartRequest(t, "testdata/gatling-scala-example-user-files.tar.gz",
 		"gatling.test.example.simulation.ExampleSimulation", "")
 	rr := httptest.NewRecorder()
 	createHandler().ServeHTTP(rr, req)
@@ -99,13 +99,13 @@ func someWorkspace() *workspace.Workspace {
 }
 
 func someJarSimulationReq(t *testing.T) *http.Request {
-	return createMultiPartRequest(t, "testdata/gatling-test-example-lean.jar",
+	return createMultiPartRequest(t, "testdata/gatling-scala-example-lean.jar",
 		"gatling.test.example.simulation.ExampleSimulation",
 		"-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1")
 }
 
 func someMultipartRequestWithoutSimulationField(t *testing.T) *http.Request {
-	return createMultiPartRequest(t, "testdata/gatling-test-example-lean.jar", "",
+	return createMultiPartRequest(t, "testdata/gatling-scala-example-lean.jar", "",
 		"-DsomeKey=someValue")
 }
 

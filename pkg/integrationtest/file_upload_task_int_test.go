@@ -49,7 +49,7 @@ func TestSubmitJarSimulation(t *testing.T) {
 		"javaOpts":   "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1",
 	}
 	uploadUrl := fmt.Sprintf("%s/task/upload/http", baseUrl)
-	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-test-example-lean.jar", kv)
+	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-scala-example-lean.jar", kv)
 	test.Assertf(t, err == nil, "unable to upload : %v", err)
 	test.Assert(t, resp.StatusCode == http.StatusOK, "expecting 200")
 	var entity = &api.SubmitTaskResponse{}
@@ -71,7 +71,7 @@ func TestAbortTask(t *testing.T) {
 		"javaOpts":   "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1",
 	}
 	uploadUrl := fmt.Sprintf("%s/task/upload/http", baseUrl)
-	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-test-example-lean.jar", kv)
+	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-scala-example-lean.jar", kv)
 	test.Assertf(t, err == nil, "unable to upload : %v", err)
 	test.Assert(t, resp.StatusCode == http.StatusOK, "expecting 200")
 	var entity = &api.SubmitTaskResponse{}
