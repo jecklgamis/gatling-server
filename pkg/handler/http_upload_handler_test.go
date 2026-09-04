@@ -44,8 +44,24 @@ func TestFileUploadWithoutSimulationField(t *testing.T) {
 }
 
 func TestUploadDirMustBeAbsolute(t *testing.T) {
-	handler := NewHttpUploadHandler(someWorkspace(), someTaskManager(), ".")
+	handler := NewHttpUploadHandler(someWorkspace(), someTaskManager(), ".", someApiToken)
 	test.Assertf(t, handler == nil, "expecting nil handler")
+}
+
+func TestUploadWithMissingApiToken(t *testing.T) {
+	req := createMultiPartRequestWithToken(t, "testdata/gatling-scala-example-lean.jar",
+		"gatling.test.example.simulation.ExampleSimulation", "", "")
+	rr := httptest.NewRecorder()
+	createHandler().ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusUnauthorized, "unexpected status code %d", rr.Code)
+}
+
+func TestUploadWithInvalidApiToken(t *testing.T) {
+	req := createMultiPartRequestWithToken(t, "testdata/gatling-scala-example-lean.jar",
+		"gatling.test.example.simulation.ExampleSimulation", "", "some-invalid-token")
+	rr := httptest.NewRecorder()
+	createHandler().ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusUnauthorized, "unexpected status code %d", rr.Code)
 }
 
 func TestInvalidRequestMethod(t *testing.T) {
@@ -58,6 +74,7 @@ func TestInvalidRequestMethod(t *testing.T) {
 func TestUploadNilBody(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "http://localhost:8080", nil)
+	req.Header.Set("Authorization", "Bearer "+someApiToken)
 	createHandler().ServeHTTP(rr, req)
 	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %d", rr.Code)
 }
@@ -65,6 +82,7 @@ func TestUploadNilBody(t *testing.T) {
 func TestNotMultipart(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "http://localhost:8080", strings.NewReader("some-body"))
+	req.Header.Set("Authorization", "Bearer "+someApiToken)
 	createHandler().ServeHTTP(rr, req)
 	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %d", rr.Code)
 }
@@ -83,9 +101,11 @@ func TestNoFileAttachment(t *testing.T) {
 	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %d", rr.Code)
 }
 
+const someApiToken = "some-test-api-token"
+
 func createHandler() http.Handler {
 	uploadDir, _ := ioutil.TempDir("", "uploads")
-	httpUploadHandler := NewHttpUploadHandler(someWorkspace(), someTaskManager(), uploadDir)
+	httpUploadHandler := NewHttpUploadHandler(someWorkspace(), someTaskManager(), uploadDir, someApiToken)
 	return http.HandlerFunc(httpUploadHandler.Handle)
 }
 
@@ -110,6 +130,10 @@ func someMultipartRequestWithoutSimulationField(t *testing.T) *http.Request {
 }
 
 func createMultiPartRequest(t *testing.T, filename, simulation, javaOpts string) *http.Request {
+	return createMultiPartRequestWithToken(t, filename, simulation, javaOpts, someApiToken)
+}
+
+func createMultiPartRequestWithToken(t *testing.T, filename, simulation, javaOpts, apiToken string) *http.Request {
 	kv := map[string]string{}
 	if simulation != "" {
 		kv["simulation"] = simulation
@@ -117,7 +141,11 @@ func createMultiPartRequest(t *testing.T, filename, simulation, javaOpts string)
 	if javaOpts != "" {
 		kv["javaOpts"] = javaOpts
 	}
-	req, err := uploader.CreateMultipartRequest("http://localhost", filename, kv)
+	headers := map[string]string{}
+	if apiToken != "" {
+		headers["Authorization"] = "Bearer " + apiToken
+	}
+	req, err := uploader.CreateMultipartRequest("http://localhost", filename, kv, headers)
 	test.Assertf(t, err == nil, "unable create request : %v", err)
 	return req
 }

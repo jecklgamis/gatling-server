@@ -22,6 +22,7 @@ type HttpUploadHandler struct {
 	WorkspaceOps workspace.Ops
 	TaskOps      taskmanager.Ops
 	UploadDir    string
+	ApiToken     string
 }
 
 type Metadata struct {
@@ -30,17 +31,22 @@ type Metadata struct {
 	JavaOpts   string `json:"javaOpts"`
 }
 
-func NewHttpUploadHandler(workspace workspace.Ops, taskManager taskmanager.Ops, uploadDir string) *HttpUploadHandler {
+func NewHttpUploadHandler(workspace workspace.Ops, taskManager taskmanager.Ops, uploadDir string, apiToken string) *HttpUploadHandler {
 	if !filepath.IsAbs(uploadDir) {
 		log.Println("Upload dir is not absolute")
 		return nil
 	}
-	return &HttpUploadHandler{WorkspaceOps: workspace, TaskOps: taskManager, UploadDir: uploadDir}
+	return &HttpUploadHandler{WorkspaceOps: workspace, TaskOps: taskManager, UploadDir: uploadDir, ApiToken: apiToken}
 }
 
 func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		methodNotAllowed(w)
+		return
+	}
+	if !isAuthorized(r, h.ApiToken) {
+		log.Println("Missing or invalid API token")
+		unauthorizedWithError(w, fmt.Errorf("missing or invalid API token"))
 		return
 	}
 	err := r.ParseMultipartForm(32 << 20)
@@ -136,6 +142,14 @@ func writeMetadata(dir string, metadata *Metadata, filename string) error {
 
 func hasValidFileExt(filename string) bool {
 	return strings.HasSuffix(filename, ".jar")
+}
+
+func isAuthorized(r *http.Request, apiToken string) bool {
+	if apiToken == "" {
+		return false
+	}
+	authHeader := r.Header.Get("Authorization")
+	return strings.TrimPrefix(authHeader, "Bearer ") == apiToken
 }
 
 func validateFormFields(r *http.Request) error {

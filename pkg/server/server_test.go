@@ -13,6 +13,7 @@ import (
 
 func TestServerEndPoints(t *testing.T) {
 	os.Setenv("APP_ENVIRONMENT", "dev")
+	os.Setenv("API_TOKEN", "some-test-api-token")
 	port := test.UnusedPort()
 	go func() {
 		viper.Set("SERVER.HTTP.PORT", fmt.Sprintf("%d", port))

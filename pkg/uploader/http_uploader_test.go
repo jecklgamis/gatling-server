@@ -11,13 +11,13 @@ import (
 
 func TestCreateMultipartRequestForNonExistingFile(t *testing.T) {
 	_, err := CreateMultipartRequest("http://some-url", "testdata/non-existing-file.txt",
-		someRequestData())
+		someRequestData(), nil)
 	test.Assert(t, err != nil, "expecting to fail request creation")
 }
 
 func TestCreateMultipartRequest(t *testing.T) {
 	req, err := CreateMultipartRequest("http://some-url",
-		"testdata/SingleFileExampleSimulation.scala", someRequestData())
+		"testdata/SingleFileExampleSimulation.scala", someRequestData(), nil)
 	test.Assert(t, err == nil, "unable to create request")
 	validateMultiPartRequest(t, req)
 }
@@ -29,7 +29,7 @@ func TestUploadFile(t *testing.T) {
 		requestReceived = true
 	})
 	server := httptest.NewServer(handler)
-	resp, err := UploadFile(server.URL, "testdata/SingleFileExampleSimulation.scala", someRequestData())
+	resp, err := UploadFile(server.URL, "testdata/SingleFileExampleSimulation.scala", someRequestData(), nil)
 	test.Assertf(t, resp.StatusCode == http.StatusOK, "expecting 200")
 	test.Assertf(t, err == nil, "failed to upload file")
 	test.Assert(t, requestReceived, "server did not receive POST request")
@@ -42,19 +42,19 @@ func TestUploadFileFailureOn5xx(t *testing.T) {
 		requestReceived = true
 	})
 	server := httptest.NewServer(handler)
-	resp, err := UploadFile(server.URL, "testdata/SingleFileExampleSimulation.scala", someRequestData())
+	resp, err := UploadFile(server.URL, "testdata/SingleFileExampleSimulation.scala", someRequestData(), nil)
 	test.Assertf(t, err == nil, "failed to upload file")
 	test.Assertf(t, resp.StatusCode == http.StatusInternalServerError, "expecting 500")
 	test.Assert(t, requestReceived, "server did not receive POST request")
 }
 
 func TestUploadFileFailureOnUnknownHost(t *testing.T) {
-	_, err := UploadFile("http://"+uuid.New().String()[0:8], "testdata/SingleFileExampleSimulation.scala", someRequestData())
+	_, err := UploadFile("http://"+uuid.New().String()[0:8], "testdata/SingleFileExampleSimulation.scala", someRequestData(), nil)
 	test.Assertf(t, err != nil, "failed to upload file")
 }
 
 func TestUploadNonExistentFile(t *testing.T) {
-	_, err := UploadFile("http://localhost:8080", "testdata/non-existent-file.txt", someRequestData())
+	_, err := UploadFile("http://localhost:8080", "testdata/non-existent-file.txt", someRequestData(), nil)
 	test.Assertf(t, err != nil, "failed to upload file")
 
 }

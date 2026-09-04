@@ -18,10 +18,11 @@ Heads up: this is currently in alpha testing but feel free to try the latest Doc
 
 ## Getting Started
 
-Start the server using the Docker image available from Docker Hub:
+Start the server using the Docker image available from Docker Hub. HTTP uploads require an API token; set the
+`API_TOKEN` environment variable to your own value, otherwise it defaults to `default`:
 
 ```bash
-docker run -it -p 58080:58080 jecklgamis/gatling-server:main
+docker run -it --name gatling-server -p 58080:58080 -e API_TOKEN=some-secret-token jecklgamis/gatling-server:main
 ```
 
 Ensure it's up by hitting the `/buildInfo` endpoint:
@@ -39,12 +40,17 @@ for generated artifacts such as console logs or Gatling reports.
 
 ### Submitting Task Using HTTP Upload
 
+HTTP uploads require an API token, sent as a bearer token in the `Authorization` header on every upload request.
+It defaults to `default` unless the server is started with its own `API_TOKEN` environment variable. Requests
+without a matching token are rejected with `401 Unauthorized`.
+
 **Running a packaged simulation**
 
 In the [gatling-scala-example](https://github.com/jecklgamis/gatling-scala-example) project dir
 
 ```bash
 curl -v \
+  -H "Authorization: Bearer ${API_TOKEN}" \
   -F 'file=@target/gatling-scala-example.jar' \
   -F "simulation=gatling.test.example.simulation.ExampleSimulation" \
   -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPersecond=10" \
@@ -147,6 +153,7 @@ the [maven-shade-plugin](https://maven.apache.org/plugins/maven-shade-plugin/). 
 
 ```bash
 curl -v \
+  -H "Authorization: Bearer ${API_TOKEN}" \
   -F 'file=@./target/gatling-scala-example.jar' \
   -F "simulation=gatling.test.example.simulation.ExampleSimulation" \
   -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPersecond=1" \

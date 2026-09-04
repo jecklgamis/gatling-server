@@ -33,6 +33,17 @@ func notFound(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNotFound)
 }
 
+func unauthorizedWithError(w http.ResponseWriter, error error) {
+	w.WriteHeader(http.StatusUnauthorized)
+	entity := map[string]interface{}{
+		"ok":    false,
+		"error": error}
+	err := json.NewEncoder(w).Encode(entity)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
 func internalServerError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 }

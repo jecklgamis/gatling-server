@@ -11,8 +11,8 @@ import (
 	"strings"
 )
 
-func UploadFile(uploadUrl string, filename string, kv map[string]string) (*http.Response, error) {
-	req, err := CreateMultipartRequest(uploadUrl, filename, kv)
+func UploadFile(uploadUrl string, filename string, kv map[string]string, headers map[string]string) (*http.Response, error) {
+	req, err := CreateMultipartRequest(uploadUrl, filename, kv, headers)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func UploadFile(uploadUrl string, filename string, kv map[string]string) (*http.
 	return resp, nil
 }
 
-func CreateMultipartRequest(uploadURL string, filename string, kv map[string]string) (*http.Request, error) {
+func CreateMultipartRequest(uploadURL string, filename string, kv map[string]string, headers map[string]string) (*http.Request, error) {
 	var body = &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	if filename != "" {
@@ -65,5 +65,8 @@ func CreateMultipartRequest(uploadURL string, filename string, kv map[string]str
 		return nil, err
 	}
 	request.Header.Add("Content-Type", writer.FormDataContentType())
+	for k, v := range headers {
+		request.Header.Add(k, v)
+	}
 	return request, nil
 }

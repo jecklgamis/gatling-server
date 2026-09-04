@@ -19,8 +19,11 @@ import (
 	"time"
 )
 
+const testApiToken = "some-test-api-token"
+
 func startServer() (baseUrl string) {
 	os.Setenv("APP_ENVIRONMENT", "dev")
+	os.Setenv("API_TOKEN", testApiToken)
 	port := test.UnusedPort()
 	uploadDir, _ := ioutil.TempDir("", "uploads")
 	workspaceDir, _ := ioutil.TempDir("", "repos")
@@ -49,7 +52,8 @@ func TestSubmitJarSimulation(t *testing.T) {
 		"javaOpts":   "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1",
 	}
 	uploadUrl := fmt.Sprintf("%s/task/upload/http", baseUrl)
-	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-scala-example-lean.jar", kv)
+	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-scala-example-lean.jar", kv,
+		map[string]string{"Authorization": "Bearer " + testApiToken})
 	test.Assertf(t, err == nil, "unable to upload : %v", err)
 	test.Assert(t, resp.StatusCode == http.StatusOK, "expecting 200")
 	var entity = &api.SubmitTaskResponse{}
@@ -71,7 +75,8 @@ func TestAbortTask(t *testing.T) {
 		"javaOpts":   "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1",
 	}
 	uploadUrl := fmt.Sprintf("%s/task/upload/http", baseUrl)
-	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-scala-example-lean.jar", kv)
+	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-scala-example-lean.jar", kv,
+		map[string]string{"Authorization": "Bearer " + testApiToken})
 	test.Assertf(t, err == nil, "unable to upload : %v", err)
 	test.Assert(t, resp.StatusCode == http.StatusOK, "expecting 200")
 	var entity = &api.SubmitTaskResponse{}

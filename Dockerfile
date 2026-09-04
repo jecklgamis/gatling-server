@@ -2,7 +2,7 @@ FROM ubuntu:24.04
 LABEL org.opencontainers.image.authors="jecklgamis@gmail.com"
 
 
-RUN apt update -y && apt install -y openjdk-21-jdk-headless curl dumb-init
+RUN apt update -y && apt install -y openjdk-25-jdk-headless curl dumb-init
 RUN rm -rf /var/lib/apt/lists/*
 
 ENV APP_ENVIRONMENT=dev

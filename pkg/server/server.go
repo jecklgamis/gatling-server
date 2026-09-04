@@ -57,7 +57,8 @@ func Start() {
 	}
 	uploadDir, _ := filepath.Abs(config.UploadDir)
 	log.Println("Using upload dir", uploadDir)
-	httpUploadHandler := handler.NewHttpUploadHandler(workspace, taskManager, uploadDir)
+	apiToken := env.GetOrElse("API_TOKEN", "default")
+	httpUploadHandler := handler.NewHttpUploadHandler(workspace, taskManager, uploadDir, apiToken)
 	router.HandleFunc("/task/upload/http", httpUploadHandler.Handle)
 
 	s3Config, found := config.Downloaders["s3"]
