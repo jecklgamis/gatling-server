@@ -11,9 +11,7 @@ import (
 type UserFilesDir struct {
 	BaseDir     string
 	Simulations string
-	Binaries    string
 	Libraries   string
-	Resources   string
 	Results     string
 }
 
@@ -31,8 +29,6 @@ func NewUserFilesDir(baseDir string) (*UserFilesDir, error) {
 	userFilesDir := &UserFilesDir{
 		BaseDir:     baseDir,
 		Simulations: filepath.Join(baseDir, "simulations"),
-		Binaries:    filepath.Join(baseDir, "binaries"),
-		Resources:   filepath.Join(baseDir, "resources"),
 		Results:     filepath.Join(baseDir, "results"),
 		Libraries:   filepath.Join(baseDir, "lib"),
 	}
@@ -43,10 +39,14 @@ func NewUserFilesDir(baseDir string) (*UserFilesDir, error) {
 }
 
 func (r *UserFilesDir) create(perm os.FileMode) error {
-	util.CreateDirIfNotExist(r.BaseDir, perm)
-	util.CreateDirIfNotExist(r.Simulations, perm)
-	util.CreateDirIfNotExist(r.Binaries, perm)
-	util.CreateDirIfNotExist(r.Resources, perm)
-	util.CreateDirIfNotExist(r.Results, perm)
+	if err := util.CreateDirIfNotExist(r.BaseDir, perm); err != nil {
+		return err
+	}
+	if err := util.CreateDirIfNotExist(r.Simulations, perm); err != nil {
+		return err
+	}
+	if err := util.CreateDirIfNotExist(r.Results, perm); err != nil {
+		return err
+	}
 	return nil
 }

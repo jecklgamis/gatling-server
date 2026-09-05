@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"crypto/subtle"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jecklgamis/gatling-server/pkg/api"
@@ -14,9 +15,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 )
+
+const maxUploadSize = 500 << 20 // 500MB
 
 type HttpUploadHandler struct {
 	WorkspaceOps workspace.Ops
@@ -49,6 +53,7 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		unauthorizedWithError(w, fmt.Errorf("missing or invalid API token"))
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
 		log.Println("Unable to parse multipart form :", err)
@@ -63,7 +68,8 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	if !hasValidFileExt(header.Filename) {
+	filename := filepath.Base(header.Filename)
+	if !hasValidFileExt(filename) {
 		log.Println("Invalid file extension")
 		badRequestWithError(w, fmt.Errorf("invalid file extension"))
 		return
@@ -85,8 +91,14 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Unable to create dir :", err)
 		internalServerError(w)
+		return
 	}
-	storePath, err := fileioutil.WriteBufferToFile(&buffer, storeDir, header.Filename)
+	defer func() {
+		if err := os.RemoveAll(storeDir); err != nil {
+			log.Println("Unable to remove temporary upload dir :", err)
+		}
+	}()
+	storePath, err := fileioutil.WriteBufferToFile(&buffer, storeDir, filename)
 	if err != nil {
 		log.Println("Unable to store file :", err)
 		internalServerError(w)
@@ -100,12 +112,20 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w)
 		return
 	}
+	taskCommitted := false
+	defer func() {
+		if !taskCommitted {
+			if err := os.RemoveAll(taskPath); err != nil {
+				log.Println("Unable to remove task dir after failed upload :", err)
+			}
+		}
+	}()
 	simulation := r.FormValue("simulation")
 	javaOpts := r.FormValue("javaOpts")
 	task := gatling.NewTask(taskId, simulation, javaOpts, userFilesDir)
 
 	task.FileType = "jar"
-	destPath := filepath.Join(userFilesDir.Simulations, header.Filename)
+	destPath := filepath.Join(userFilesDir.Simulations, filename)
 	err = fileioutil.CopyFile(*storePath, destPath)
 	if err != nil {
 		log.Println("Unable to copy uploaded file to user files dir : ", err)
@@ -126,6 +146,7 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w)
 		return
 	}
+	taskCommitted = true
 	okWithJson(w, &api.SubmitTaskResponse{Ok: true, TaskId: taskId})
 }
 
@@ -148,8 +169,13 @@ func isAuthorized(r *http.Request, apiToken string) bool {
 	if apiToken == "" {
 		return false
 	}
+	const prefix = "Bearer "
 	authHeader := r.Header.Get("Authorization")
-	return strings.TrimPrefix(authHeader, "Bearer ") == apiToken
+	if !strings.HasPrefix(authHeader, prefix) {
+		return false
+	}
+	token := strings.TrimPrefix(authHeader, prefix)
+	return subtle.ConstantTimeCompare([]byte(token), []byte(apiToken)) == 1
 }
 
 func validateFormFields(r *http.Request) error {

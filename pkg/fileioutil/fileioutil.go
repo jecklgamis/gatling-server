@@ -3,6 +3,7 @@ package fileioutil
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -39,7 +40,7 @@ func CreateDirIfNotExist(path string, perm os.FileMode) error {
 		return nil
 	}
 	if err := os.MkdirAll(path, perm); err != nil {
-		return nil
+		return err
 	}
 	log.Println("Created", path)
 	return nil
@@ -68,15 +69,18 @@ func FileExist(path string) bool {
 }
 
 func CopyFile(src string, dst string) error {
-	input, err := ioutil.ReadFile(src)
+	input, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(dst, input, 0744)
+	defer input.Close()
+	output, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0744)
 	if err != nil {
 		return err
 	}
-	return nil
+	defer output.Close()
+	_, err = io.Copy(output, input)
+	return err
 }
 
 func FindFile(dir string, filename string) (foundPath string, err error) {

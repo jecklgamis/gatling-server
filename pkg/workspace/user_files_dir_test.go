@@ -18,8 +18,6 @@ func TestNewUserFilesDir(t *testing.T) {
 	test.Assert(t, err == nil, "unable to user files dir")
 	test.Assert(t, util.DirExists(userFilesDir.BaseDir), "base dir does not exist")
 	test.Assert(t, util.DirExists(userFilesDir.Simulations), "simulations dir does not exist")
-	test.Assert(t, util.DirExists(userFilesDir.Binaries), "binaries dir does not exist")
-	test.Assert(t, util.DirExists(userFilesDir.Resources), "resources dir does not exist")
 	test.Assert(t, util.DirExists(userFilesDir.Results), "results dir does not exist")
 }
 
