@@ -71,7 +71,7 @@ func Start() {
 		region, found := s3Config.ConfigMap["region"]
 		if found {
 			s3ops := s3.NewS3Manager(region)
-			s3DownloadHandler := handler.NewS3DownloadHandler(workspace, taskManager, s3ops)
+			s3DownloadHandler := handler.NewS3DownloadHandler(workspace, taskManager, s3ops, apiToken)
 			router.HandleFunc("/task/download/s3", s3DownloadHandler.Handle)
 		} else {
 			log.Println("S3 downloader missing region config")

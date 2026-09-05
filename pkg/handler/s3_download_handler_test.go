@@ -24,8 +24,19 @@ func TestS3HandlerWithInvalidMethod(t *testing.T) {
 func TestS3HandlerWithNilBody(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "http://localhost:8080", nil)
+	req.Header.Set("Authorization", "Bearer "+someApiToken)
 	createS3Handler().ServeHTTP(rr, req)
 	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %d", rr.Code)
+}
+
+func TestS3HandlerWithMissingApiToken(t *testing.T) {
+	body := jsonutil.ToJson(createS3DownloadRequest(
+		"gatling.test.example.simulation.ExampleSimulation", "", "s3://some-bucket/gatling-scala-example-lean.jar"))
+	req, err := http.NewRequest("POST", "/some-url", strings.NewReader(body))
+	test.Assertf(t, err == nil, "unable to create request")
+	rr := httptest.NewRecorder()
+	createS3Handler().ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusUnauthorized, "unexpected status code %v", rr.Code)
 }
 
 func TestS3HandlerWithEmptySimulation(t *testing.T) {
@@ -87,11 +98,11 @@ func TestDownloadJarSimulation(t *testing.T) {
 func createS3Handler() http.Handler {
 	s3Ops := s3.NewFakeS3Ops(fileioutil.MustReadFile("testdata/gatling-scala-example-lean.jar"),
 		tempFile("ExampleSimulation.jar"), nil)
-	return http.HandlerFunc(NewS3DownloadHandler(someWorkspace(), someTaskManager(), s3Ops).Handle)
+	return http.HandlerFunc(NewS3DownloadHandler(someWorkspace(), someTaskManager(), s3Ops, someApiToken).Handle)
 }
 
 func createS3HandlerWith(s3Ops s3.S3Ops) http.Handler {
-	return http.HandlerFunc(NewS3DownloadHandler(someWorkspace(), someTaskManager(), s3Ops).Handle)
+	return http.HandlerFunc(NewS3DownloadHandler(someWorkspace(), someTaskManager(), s3Ops, someApiToken).Handle)
 }
 
 func tempDir() string {
@@ -107,6 +118,7 @@ func createS3DownloadHttpRequest(t *testing.T, simulation, javaOpts, s3URL strin
 	body := jsonutil.ToJson(createS3DownloadRequest(simulation, javaOpts, s3URL))
 	req, err := http.NewRequest("POST", "/some-url", strings.NewReader(body))
 	test.Assertf(t, err == nil, "unable to create request")
+	req.Header.Set("Authorization", "Bearer "+someApiToken)
 	return req
 }
 

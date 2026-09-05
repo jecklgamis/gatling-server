@@ -9,20 +9,26 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/s3"
 	"github.com/jecklgamis/gatling-server/pkg/taskmanager"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 )
+
+const maxS3DownloadRequestSize = 1 << 20 // 1MB, this is a small JSON request body
 
 type S3DownloadHandler struct {
 	WorkspaceOps workspace.Ops
 	TaskOps      taskmanager.Ops
 	s3Ops        s3.S3Ops
+	ApiToken     string
+	authLimiter  *authLimiter
 }
 
-func NewS3DownloadHandler(workspaceOps workspace.Ops, taskOps taskmanager.Ops, s3Ops s3.S3Ops) *S3DownloadHandler {
-	return &S3DownloadHandler{WorkspaceOps: workspaceOps, TaskOps: taskOps, s3Ops: s3Ops}
+func NewS3DownloadHandler(workspaceOps workspace.Ops, taskOps taskmanager.Ops, s3Ops s3.S3Ops, apiToken string) *S3DownloadHandler {
+	return &S3DownloadHandler{WorkspaceOps: workspaceOps, TaskOps: taskOps, s3Ops: s3Ops, ApiToken: apiToken, authLimiter: newAuthLimiter()}
 }
 
 func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
@@ -30,14 +36,30 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
+	clientKey := clientIP(r)
+	if h.authLimiter.blocked(clientKey) {
+		log.Println("Too many failed auth attempts from", clientKey)
+		tooManyRequestsWithError(w, fmt.Errorf("too many failed authentication attempts"))
+		return
+	}
+	if !isAuthorized(r, h.ApiToken) {
+		h.authLimiter.recordFailure(clientKey)
+		log.Println("Missing or invalid API token")
+		unauthorizedWithError(w, fmt.Errorf("missing or invalid API token"))
+		return
+	}
 	if r.Body == nil {
 		badRequestWithError(w, fmt.Errorf("body is nil"))
 		return
 	}
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, maxS3DownloadRequestSize+1))
 	if err != nil {
 		log.Println("Unable to read request body :", err)
 		internalServerError(w)
+		return
+	}
+	if len(body) > maxS3DownloadRequestSize {
+		badRequestWithError(w, fmt.Errorf("request body too large"))
 		return
 	}
 	request := api.S3DownloadTaskRequest{}
@@ -59,6 +81,14 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w)
 		return
 	}
+	taskCommitted := false
+	defer func() {
+		if !taskCommitted {
+			if err := os.RemoveAll(taskPath); err != nil {
+				log.Println("Unable to remove task dir after failed download :", err)
+			}
+		}
+	}()
 	_, _, err = s3.ParseS3Uri(request.Url)
 	if err != nil {
 		badRequest(w)
@@ -78,7 +108,7 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	task := gatling.NewTask(taskId, request.Simulation, request.JavaOpts, userFilesDir)
 	task.FileType = "jar"
 	log.Println("Submitting simulation", filename)
-	destPath := fmt.Sprintf("%s/%s", userFilesDir.Simulations, filename)
+	destPath := filepath.Join(userFilesDir.Simulations, filename)
 	err = fileioutil.CopyFile(*storePath, destPath)
 	if err != nil {
 		log.Println("Unable to copy downloaded file to user files dir :", err)
@@ -86,19 +116,27 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	metadata := &Metadata{TaskId: taskId, Simulation: request.Simulation, JavaOpts: request.JavaOpts}
-	writeMetadata(userFilesDir.BaseDir, metadata, "metadata.json")
+	if err := writeMetadata(userFilesDir.BaseDir, metadata, "metadata.json"); err != nil {
+		log.Println("Unable write metadata file :", err)
+		internalServerError(w)
+		return
+	}
 	_, err = h.TaskOps.SubmitTask(task)
 	if err != nil {
 		log.Println("Unable to submit task", err)
 		internalServerError(w)
 		return
 	}
+	taskCommitted = true
 	okWithJson(w, &api.SubmitTaskResponse{Ok: true, TaskId: taskId})
 }
 
 func validateRequest(request *api.S3DownloadTaskRequest) error {
 	if request.Simulation == "" {
 		return fmt.Errorf("empty simulation class name")
+	}
+	if err := validateJavaOpts(request.JavaOpts); err != nil {
+		return err
 	}
 	return nil
 }
