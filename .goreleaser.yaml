@@ -26,6 +26,7 @@ builds:
 archives:
   - id: default
     formats: [tar.gz]
+    wrap_in_directory: true
     name_template: >-
       {{ .ProjectName }}-{{ .Os }}-{{ .Arch }}-{{ .Version }}
     files:
