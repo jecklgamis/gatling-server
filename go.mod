@@ -2,7 +2,7 @@ module github.com/jecklgamis/gatling-server
 
 go 1.23.0
 
-toolchain go1.24.4
+toolchain go1.27.1
 
 require (
 	github.com/aws/aws-sdk-go v1.55.7
