@@ -2,15 +2,13 @@
 set -e
 EXEC_DIR="$(pwd)"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-
 GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || true)
 if [ -n "${GIT_TAG}" ]; then
   VERSION="${GIT_TAG#v}"
   echo "Using version ${VERSION} from git tag ${GIT_TAG}"
 else
-  source ${SCRIPT_DIR}/release-version
-  echo "HEAD is not exactly tagged, using version ${VERSION} from ${SCRIPT_DIR}/release-version"
+  VERSION="0.0.0-dev+$(git rev-parse --short HEAD)"
+  echo "HEAD is not exactly tagged, using dev version ${VERSION}"
 fi
 
 TARGET_OS=${TARGET_OS:-linux}

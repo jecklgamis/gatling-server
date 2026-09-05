@@ -22,18 +22,8 @@ help:
 	@echo make test-all - run all tests
 	@echo make test-coverage - run tests with coverage
 	@echo make clean - delete built artifacts
-	@echo make release - release distribution
 dist-quick: clean server-binaries ssl-certs
 dist: test-coverage dist-quick
-release:
-	@echo "Check 1. Have you updated scripts/release-version file?"
-	@echo "Check 2. Is make dist successful?"
-	@read -p "Break now if any of your answers is NO. Otherwise, press <Enter> to continue"
-	@rm -rf dist
-	@$(CURDIR)/scripts/create-tag.sh
-	@TARGET_OS=linux TARGET_ARCH=amd64 scripts/create-dist.sh
-	@TARGET_OS=darwin TARGET_ARCH=amd64 scripts/create-dist.sh
-	@$(CURDIR)/scripts/create-relnotes.sh
 up: dist-quick image run
 image:
 	@docker build -t $(IMAGE_NAME):$(IMAGE_TAG) -t $(IMAGE_NAME):latest .
