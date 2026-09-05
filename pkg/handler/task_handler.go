@@ -42,7 +42,8 @@ func (h *TaskHandler) TaskContextHandler(w http.ResponseWriter, r *http.Request)
 		notFound(w)
 		return
 	}
-	okWithJson(w, taskContext)
+	snapshot := taskContext.Snapshot()
+	okWithJson(w, &snapshot)
 }
 
 func (h *TaskHandler) AbortTaskHandler(w http.ResponseWriter, r *http.Request) {

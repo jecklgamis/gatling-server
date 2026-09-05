@@ -50,6 +50,9 @@ func Start() {
 	scriptsDir, _ := filepath.Abs(config.ScriptsDir)
 	gatling := gatling.NewGatling(scriptsDir)
 	taskManager := taskmanager.NewTaskManager(gatling, eventBus.EventC, uploaders)
+	if config.TaskTimeout > 0 {
+		taskManager.SetTaskTimeout(config.TaskTimeout)
+	}
 	workspaceDir, _ := filepath.Abs(config.WorkspaceDir)
 	workspace := workspace.NewWorkspace(workspaceDir)
 	if workspace == nil {

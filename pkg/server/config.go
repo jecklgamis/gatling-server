@@ -54,6 +54,7 @@ type Config struct {
 	Uploaders      []UploaderConfig
 	Heartbeat      HeartbeatConfig
 	Downloaders    map[string]DownloaderConfig
+	TaskTimeout    time.Duration
 }
 
 func ReadConfig(env string) *Config {

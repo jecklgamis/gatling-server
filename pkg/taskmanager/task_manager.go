@@ -12,8 +12,11 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
+
+const defaultTaskTimeout = 30 * time.Minute
 
 type TaskStatus string
 
@@ -24,6 +27,7 @@ const (
 )
 
 type TaskRuntimeContext struct {
+	mu        sync.Mutex
 	Process   *os.Process
 	Task      *gatling.Task
 	Started   time.Time
@@ -34,11 +38,15 @@ type TaskRuntimeContext struct {
 }
 
 func (c *TaskRuntimeContext) markStarted() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.Started = time.Now()
 	c.Status = TaskStarted
 }
 
 func (c *TaskRuntimeContext) markCompleted(success bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.Completed = time.Now()
 	c.Status = TaskCompleted
 	c.Duration = c.Completed.Sub(c.Started)
@@ -46,10 +54,46 @@ func (c *TaskRuntimeContext) markCompleted(success bool) {
 }
 
 func (c *TaskRuntimeContext) markAborted() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.Completed = time.Now()
 	c.Status = TaskAborted
 	c.Duration = time.Now().Sub(c.Started)
 	c.Success = false
+}
+
+func (c *TaskRuntimeContext) setProcess(p *os.Process) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.Process = p
+}
+
+func (c *TaskRuntimeContext) getProcess() *os.Process {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.Process
+}
+
+func (c *TaskRuntimeContext) getStatus() TaskStatus {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.Status
+}
+
+// Snapshot returns a point-in-time copy of the context's fields, safe to read
+// or JSON-marshal without racing the worker goroutine that mutates them.
+func (c *TaskRuntimeContext) Snapshot() TaskRuntimeContext {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return TaskRuntimeContext{
+		Process:   c.Process,
+		Task:      c.Task,
+		Started:   c.Started,
+		Completed: c.Completed,
+		Duration:  c.Duration,
+		Status:    c.Status,
+		Success:   c.Success,
+	}
 }
 
 type Ops interface {
@@ -64,19 +108,28 @@ type TaskManager struct {
 	Gatling           gatling.Ops
 	EventChannel      chan interface{}
 	artifactUploaders []uploader.GatlingArtifactUploader
+	TaskTimeout       time.Duration
 }
 
 func CreateTaskId() string {
-	return uuid.New().String()[0:8]
+	return uuid.New().String()
 }
 
 func NewTaskManager(gatlingOps gatling.Ops, eventChannel chan interface{},
 	artifactUploaders []uploader.GatlingArtifactUploader) *TaskManager {
 	return &TaskManager{Gatling: gatlingOps, EventChannel: eventChannel, artifactUploaders: artifactUploaders,
-		TaskContexts: map[string]*TaskRuntimeContext{}}
+		TaskContexts: map[string]*TaskRuntimeContext{}, TaskTimeout: defaultTaskTimeout}
+}
+
+// SetTaskTimeout overrides the default duration a simulation is allowed to run
+// before it is forcibly killed. Pass 0 to disable the timeout.
+func (t *TaskManager) SetTaskTimeout(timeout time.Duration) {
+	t.TaskTimeout = timeout
 }
 
 func (t *TaskManager) GetTaskRuntimeContext(taskId string) (*TaskRuntimeContext, bool) {
+	t.taskContextMutex.Lock()
+	defer t.taskContextMutex.Unlock()
 	context, ok := t.TaskContexts[taskId]
 	if !ok {
 		return nil, false
@@ -85,19 +138,22 @@ func (t *TaskManager) GetTaskRuntimeContext(taskId string) (*TaskRuntimeContext,
 }
 
 func (t *TaskManager) AbortTask(taskId string) error {
+	t.taskContextMutex.Lock()
 	context, ok := t.TaskContexts[taskId]
+	t.taskContextMutex.Unlock()
 	if !ok {
 		return fmt.Errorf("task %v not found", taskId)
 	}
-	if context.Status == TaskCompleted {
+	status := context.getStatus()
+	if status == TaskCompleted {
 		return fmt.Errorf("task %v already completed", taskId)
 	}
-	if context.Status == TaskAborted {
+	if status == TaskAborted {
 		return fmt.Errorf("task %v already aborted", taskId)
 	}
-	if context.Process != nil {
+	if process := context.getProcess(); process != nil {
 		defer context.markAborted()
-		err := context.Process.Kill()
+		err := process.Kill()
 		if err != nil {
 			return err
 		}
@@ -125,12 +181,31 @@ func (t *TaskManager) worker(context *TaskRuntimeContext, task *gatling.Task, re
 		result <- &gatling.Result{Ok: false}
 		return
 	}
-	context.Process = cmd.Process
+	context.setProcess(cmd.Process)
 	log.Println("Waiting for task", task.Id, "to complete")
+	var timedOut int32
+	var timer *time.Timer
+	if t.TaskTimeout > 0 {
+		timer = time.AfterFunc(t.TaskTimeout, func() {
+			atomic.StoreInt32(&timedOut, 1)
+			log.Println("Task", task.Id, "exceeded timeout of", t.TaskTimeout, "- killing process")
+			if err := cmd.Process.Kill(); err != nil {
+				log.Println("Unable to kill timed-out task", task.Id, ":", err)
+			}
+		})
+	}
 	err = cmd.Wait()
+	if timer != nil {
+		timer.Stop()
+	}
 	if err != nil {
 		log.Println("Failed executing command :", err)
-		if strings.Contains(err.Error(), "signal: killed") {
+		if atomic.LoadInt32(&timedOut) == 1 {
+			log.Println("Task", task.Id, "was killed after exceeding timeout of", t.TaskTimeout)
+			context.markAborted()
+			result <- &gatling.Result{Ok: false}
+			t.EventChannel <- event.NewTaskAbortedEvent(task.Id)
+		} else if strings.Contains(err.Error(), "signal: killed") {
 			context.markAborted()
 			result <- &gatling.Result{Ok: false}
 			t.EventChannel <- event.NewTaskAbortedEvent(task.Id)

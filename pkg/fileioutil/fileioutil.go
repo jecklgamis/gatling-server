@@ -22,12 +22,12 @@ func WriteBufferToFile(buffer *bytes.Buffer, dir string, filename string) (*stri
 	if !DirExists(dir) {
 		return nil, fmt.Errorf("dir %v does not exist", dir)
 	}
-	err := os.MkdirAll(dir, 0744)
+	err := os.MkdirAll(dir, 0750)
 	if err != nil {
 		return nil, err
 	}
 	storePath := filepath.Join(dir, filename)
-	err = ioutil.WriteFile(storePath, buffer.Bytes(), 0744)
+	err = ioutil.WriteFile(storePath, buffer.Bytes(), 0640)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func CopyFile(src string, dst string) error {
 		return err
 	}
 	defer input.Close()
-	output, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0744)
+	output, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0640)
 	if err != nil {
 		return err
 	}

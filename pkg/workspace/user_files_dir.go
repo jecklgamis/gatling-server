@@ -32,7 +32,7 @@ func NewUserFilesDir(baseDir string) (*UserFilesDir, error) {
 		Results:     filepath.Join(baseDir, "results"),
 		Libraries:   filepath.Join(baseDir, "lib"),
 	}
-	if err := userFilesDir.create(0744); err != nil {
+	if err := userFilesDir.create(0750); err != nil {
 		return nil, err
 	}
 	return userFilesDir, nil

@@ -48,6 +48,17 @@ func internalServerError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
+func tooManyRequestsWithError(w http.ResponseWriter, error error) {
+	w.WriteHeader(http.StatusTooManyRequests)
+	entity := map[string]interface{}{
+		"ok":    false,
+		"error": error}
+	err := json.NewEncoder(w).Encode(entity)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
 func okWithJson(w http.ResponseWriter, entity interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

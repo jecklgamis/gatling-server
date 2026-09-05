@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"crypto/subtle"
 	"fmt"
 	"github.com/google/uuid"
@@ -14,9 +13,11 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -27,6 +28,7 @@ type HttpUploadHandler struct {
 	TaskOps      taskmanager.Ops
 	UploadDir    string
 	ApiToken     string
+	authLimiter  *authLimiter
 }
 
 type Metadata struct {
@@ -40,7 +42,7 @@ func NewHttpUploadHandler(workspace workspace.Ops, taskManager taskmanager.Ops, 
 		log.Println("Upload dir is not absolute")
 		return nil
 	}
-	return &HttpUploadHandler{WorkspaceOps: workspace, TaskOps: taskManager, UploadDir: uploadDir, ApiToken: apiToken}
+	return &HttpUploadHandler{WorkspaceOps: workspace, TaskOps: taskManager, UploadDir: uploadDir, ApiToken: apiToken, authLimiter: newAuthLimiter()}
 }
 
 func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +50,14 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
+	clientKey := clientIP(r)
+	if h.authLimiter.blocked(clientKey) {
+		log.Println("Too many failed auth attempts from", clientKey)
+		tooManyRequestsWithError(w, fmt.Errorf("too many failed authentication attempts"))
+		return
+	}
 	if !isAuthorized(r, h.ApiToken) {
+		h.authLimiter.recordFailure(clientKey)
 		log.Println("Missing or invalid API token")
 		unauthorizedWithError(w, fmt.Errorf("missing or invalid API token"))
 		return
@@ -79,15 +88,8 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		badRequestWithError(w, err)
 		return
 	}
-	var buffer bytes.Buffer
-	_, err = io.Copy(&buffer, file)
-	if err != nil {
-		log.Println("Unable to copy file :", err)
-		internalServerError(w)
-		return
-	}
-	storeDir := filepath.Join(h.UploadDir, uuid.New().String()[0:8])
-	err = fileioutil.CreateDirIfNotExist(storeDir, 0744)
+	storeDir := filepath.Join(h.UploadDir, uuid.New().String())
+	err = fileioutil.CreateDirIfNotExist(storeDir, 0750)
 	if err != nil {
 		log.Println("Unable to create dir :", err)
 		internalServerError(w)
@@ -98,8 +100,8 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			log.Println("Unable to remove temporary upload dir :", err)
 		}
 	}()
-	storePath, err := fileioutil.WriteBufferToFile(&buffer, storeDir, filename)
-	if err != nil {
+	storePath := filepath.Join(storeDir, filename)
+	if err := streamToFile(file, storePath); err != nil {
 		log.Println("Unable to store file :", err)
 		internalServerError(w)
 		return
@@ -126,7 +128,7 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	task.FileType = "jar"
 	destPath := filepath.Join(userFilesDir.Simulations, filename)
-	err = fileioutil.CopyFile(*storePath, destPath)
+	err = fileioutil.CopyFile(storePath, destPath)
 	if err != nil {
 		log.Println("Unable to copy uploaded file to user files dir : ", err)
 		internalServerError(w)
@@ -152,13 +154,31 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 func writeMetadata(dir string, metadata *Metadata, filename string) error {
 	path := filepath.Join(dir, filename)
-	err := ioutil.WriteFile(path, []byte(jsonutil.ToJson(metadata)), 0744)
+	err := ioutil.WriteFile(path, []byte(jsonutil.ToJson(metadata)), 0640)
 	if err != nil {
 		log.Println("Failed writing", path)
 		return err
 	}
 	log.Println("Wrote", path)
 	return nil
+}
+
+func streamToFile(src io.Reader, dst string) error {
+	output, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0640)
+	if err != nil {
+		return err
+	}
+	defer output.Close()
+	_, err = io.Copy(output, src)
+	return err
+}
+
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 func hasValidFileExt(filename string) bool {
@@ -181,6 +201,42 @@ func isAuthorized(r *http.Request, apiToken string) bool {
 func validateFormFields(r *http.Request) error {
 	if r.FormValue("simulation") == "" {
 		return fmt.Errorf("expecting simulation key")
+	}
+	if err := validateJavaOpts(r.FormValue("javaOpts")); err != nil {
+		return err
+	}
+	return nil
+}
+
+// javaOptsTokenPattern restricts each whitespace-separated javaOpts token to a
+// conservative set of characters that legitimate JVM flags are made of, ruling
+// out shell metacharacters and anything else that could smuggle extra content
+// into the token.
+var javaOptsTokenPattern = regexp.MustCompile(`^-[A-Za-z0-9:=,._+/-]*$`)
+
+// javaOptsForbiddenPrefixes blocks JVM flags that can be abused to execute
+// arbitrary commands or load arbitrary native code (e.g. -XX:OnError and
+// -XX:OnOutOfMemoryError run a shell command on crash/OOM; -javaagent,
+// -agentlib and -agentpath load arbitrary code into the JVM).
+var javaOptsForbiddenPrefixes = []string{
+	"-xx:onerror",
+	"-xx:onoutofmemoryerror",
+	"-javaagent",
+	"-agentlib",
+	"-agentpath",
+}
+
+func validateJavaOpts(javaOpts string) error {
+	for _, token := range strings.Fields(javaOpts) {
+		if !javaOptsTokenPattern.MatchString(token) {
+			return fmt.Errorf("invalid javaOpts token %q", token)
+		}
+		lower := strings.ToLower(token)
+		for _, forbidden := range javaOptsForbiddenPrefixes {
+			if strings.HasPrefix(lower, forbidden) {
+				return fmt.Errorf("disallowed javaOpts flag %q", token)
+			}
+		}
 	}
 	return nil
 }

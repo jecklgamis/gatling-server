@@ -59,7 +59,8 @@ func TestAbortTask(t *testing.T) {
 	taskContext, found := tm.GetTaskRuntimeContext(task.Id)
 	test.Assertf(t, found, "task context not found for task %v", task.Id)
 	time.Sleep(5 * time.Second)
-	test.Assertf(t, taskContext.Status == TaskAborted, "unexpected status %v", taskContext.Status)
+	snapshot := taskContext.Snapshot()
+	test.Assertf(t, snapshot.Status == TaskAborted, "unexpected status %v", snapshot.Status)
 }
 
 func createSomeGatlingTask() *gatling.Task {
