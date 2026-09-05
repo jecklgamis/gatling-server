@@ -1,7 +1,6 @@
 ## gatling-server
 
 [![Build](https://github.com/jecklgamis/gatling-server/actions/workflows/build.yaml/badge.svg)](https://github.com/jecklgamis/gatling-server/actions/workflows/build.yaml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/jecklgamis/gatling-server)](https://goreportcard.com/report/github.com/jecklgamis/gatling-server)
 
 gatling-server is an API server for [Gatling](https://gatling.io/) OSS. 
 
