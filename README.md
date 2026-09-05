@@ -2,80 +2,86 @@
 
 [![Build](https://github.com/jecklgamis/gatling-server/actions/workflows/build.yaml/badge.svg)](https://github.com/jecklgamis/gatling-server/actions/workflows/build.yaml)
 
-gatling-server is an API server for [Gatling](https://gatling.io/) OSS. 
+An API server for running [Gatling](https://gatling.io/) OSS load test simulations.
 
 ## Features
 
-* Run simulations packaged as a jar file (simulations and resources bundled together)
+* Runs simulations packaged as a self-contained jar (simulation classes and resources bundled together)
 * Task submission via HTTP upload or S3 download
-* Artifacts upload to S3 (metadata, console log, results, etc.)
-* Endpoints for task metadata, console log, and results, etc.
-* HTTP and SNS event notifiers (heartbeat and task cycle events)
-* Docker image available in Docker Hub
+* Artifact upload to S3 (metadata, console log, results, etc.)
+* Endpoints for task metadata, console log, simulation log, and results
+* HTTP and SNS event notifiers for heartbeat and task lifecycle events
+* Docker image on Docker Hub, plus prebuilt binaries on [GitHub Releases](https://github.com/jecklgamis/gatling-server/releases)
 
 ## Getting Started
 
-Start the server using the Docker image available from Docker Hub. HTTP uploads require an API token; set the
-`API_TOKEN` environment variable to your own value, otherwise it defaults to `default`:
+### Using Docker
 
 ```bash
 docker run -it --name gatling-server -p 58080:58080 -e API_TOKEN=some-secret-token jecklgamis/gatling-server:main
 ```
 
-Ensure it's up by hitting the `/buildInfo` endpoint:
+### Using a prebuilt binary
+
+Download a release for your platform from [GitHub Releases](https://github.com/jecklgamis/gatling-server/releases), then:
 
 ```bash
-curl http://localhost:58080/buildInfo 
+tar xzf gatling-server-<os>-<arch>-<version>.tar.gz
+cd gatling-server-<os>-<arch>-<version>
+API_TOKEN=some-secret-token ./run-server.sh
 ```
 
-### Submitting Tasks
+### Verify it's up
 
-Gatling tasks are submitted via HTTP endpoints. Artifacts referenced in a request must be a simulation packaged as a
-jar file, containing the compiled simulation classes and resources such as request bodies, feeders, or additional
-utility classes. A task identifier is returned in the task submission response. This can be used to query the server
-for generated artifacts such as console logs or Gatling reports.
+```bash
+curl http://localhost:58080/buildInfo
+```
 
-### Submitting Task Using HTTP Upload
+HTTP uploads require an API token, sent as a bearer token in the `Authorization` header. It defaults to `default`
+unless the server was started with its own `API_TOKEN`; requests with a missing or invalid token get `401 Unauthorized`.
 
-HTTP uploads require an API token, sent as a bearer token in the `Authorization` header on every upload request.
-It defaults to `default` unless the server is started with its own `API_TOKEN` environment variable. Requests
-without a matching token are rejected with `401 Unauthorized`.
+## Submitting a Simulation
 
-**Running a packaged simulation**
+Simulations must be packaged as a self-contained (uber) jar containing the compiled simulation classes, resources,
+and all dependencies — including Scala and Gatling itself — since the server runs it directly off that jar's
+classpath. If you're using Maven, the [maven-shade-plugin](https://maven.apache.org/plugins/maven-shade-plugin/) can
+build this for you; see [gatling-scala-example](https://github.com/jecklgamis/gatling-scala-example) for a working
+setup that produces `target/gatling-scala-example.jar`.
 
-In the [gatling-scala-example](https://github.com/jecklgamis/gatling-scala-example) project dir
+### Via HTTP upload
 
 ```bash
 curl -v \
   -H "Authorization: Bearer ${API_TOKEN}" \
-  -F 'file=@target/gatling-scala-example.jar' \
+  -F "file=@target/gatling-scala-example.jar" \
   -F "simulation=gatling.test.example.simulation.ExampleSimulation" \
-  -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPersecond=10" \
+  -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPerSecond=10" \
   http://localhost:58080/task/upload/http
 ```
 
-### Submitting Task Using S3 Download
+The response includes a `taskId`, used to query the server for artifacts such as console logs or Gatling reports.
 
-Gatling server can fetch and run simulations stored in a configured s3 bucket. Ensure the s3 download is configured in
-the `config.yml` and that the container can access the s3 bucket.
+### Via S3 download
 
-```
+Enable the S3 downloader in `configs/config-<env>.yaml`:
+
+```yaml
 downloaders:
   s3:
-    enabled: false
+    enabled: true
     configMap:
       region: some-region
 ```
 
-Example using S3 download:
+Then submit a task referencing a jar already in S3:
 
-```
-$ curl -v -H "Content-Type:application/json" http://localhost:58080/task/download/s3 -d@request.json
+```bash
+curl -v -H "Content-Type: application/json" http://localhost:58080/task/download/s3 -d @request.json
 ```
 
-request.json:
+`request.json`:
 
-```
+```json
 {
   "url": "s3://gatling-server-incoming/gatling-scala-example.jar",
   "simulation": "gatling.test.example.simulation.ExampleSimulation",
@@ -83,76 +89,32 @@ request.json:
 }
 ```
 
-### Aborting Task
+### Aborting a task
 
-To abort a task, send a POST request to the `/task/abort/{taskId}` endpoint:
-
-Example:
-
-```
-$ curl -X POST http://localhost:58080/task/abort/e6a80550
+```bash
+curl -X POST http://localhost:58080/task/abort/{taskId}
 ```
 
-## Generated Artifacts
+## Retrieving Artifacts
 
-A Gatling test run generates artifacts. This includes the console log, the Gatling reports, simulation logs, and
-metadata of the original request. If the s3 uploader type is configured, these artifacts are uploaded to a configured
-bucket name.
+A simulation run produces a console log, Gatling report, simulation log, and the original request's metadata. These
+are available directly from the server, and are also uploaded to S3 if an S3 uploader is configured:
 
-These artifacts are also available from the server itself.
+| Artifact       | Endpoint                                         |
+|----------------|---------------------------------------------------|
+| Task metadata  | `http://localhost:58080/task/metadata/{taskId}`      |
+| Console output | `http://localhost:58080/task/console/{taskId}`       |
+| Simulation log | `http://localhost:58080/task/simulationLog/{taskId}` |
+| Test report    | `http://localhost:58080/task/results/{taskId}`       |
 
-Task Metadata:
-
-```
-http://localhost:5080/task/metadata/{taskId}
-```
-
-Console Output:
-
-``` 
-http://localhost:5080/task/console/{taskId}
-```
-
-Simulation Log
-
-```
-http://localhost:5080/task/simulationLog/{taskId}
-```
-
-Test Report:
-
-```
-http://localhost:5080/task/results/{taskId}
-```
-
-The report is a downloadable file in tar.gz format.
+The test report is a downloadable `tar.gz` archive.
 
 ## Authoring Simulations
 
-Gatling simulations are written in Scala. For simple simulations you can submit it straight away. For a
-fairly complicated one, creating a build project (Maven for example) can make the experience less painful. Gatling is
-quite flexible, it can be setup as a code alongside with your code base or maintained in a different repo.
-
-See the following examples depending on the language you're using:
+Gatling simulations are written in Scala. Simple simulations can be submitted as-is; for anything more involved, a
+build project (Maven, for example) makes packaging much easier. See the example projects for a working setup in your
+language of choice:
 
 * [gatling-scala-example](https://github.com/jecklgamis/gatling-scala-example)
 * [gatling-java-example](https://github.com/jecklgamis/gatling-java-example)
 * [gatling-kotlin-example](https://github.com/jecklgamis/gatling-kotlin-example)
-
-## Packaging Simulations In Jar Format
-
-`gatling-server` supports execution of simulations packaged as a self-contained (uber) jar file. The jar must contain
-the compiled simulations, resources, and all class dependencies, including Scala and Gatling itself, since the server
-runs it directly off its own classpath. If you're using Maven to author your simulations, this can be done using
-the [maven-shade-plugin](https://maven.apache.org/plugins/maven-shade-plugin/). See
- [gatling-scala-example](https://github.com/jecklgamis/gatling-scala-example) project as an example. It builds
-`target/gatling-scala-example.jar` which you can submit to the server.
-
-```bash
-curl -v \
-  -H "Authorization: Bearer ${API_TOKEN}" \
-  -F 'file=@./target/gatling-scala-example.jar' \
-  -F "simulation=gatling.test.example.simulation.ExampleSimulation" \
-  -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPersecond=1" \
-  http://localhost:58080/task/upload/http
-```
