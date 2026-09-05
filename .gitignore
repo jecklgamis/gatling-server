@@ -1,1 +1,26 @@
 # Created by .ignore support plugin (hsz.mobi)
+
+# OS / editor
+.DS_Store
+.idea/
+*.iml
+
+# Build output
+/bin/
+
+# Local TLS material (see scripts/generate-ssl-certs.sh)
+/server.crt
+/server.key
+
+# Runtime data dirs created by the running server
+/uploads/
+/workspace/
+
+# Downloaded/extracted Gatling distributions used for local dev
+/gatling-charts-highcharts-bundle-*/
+
+# Packaged Helm chart output
+/deployment/k8s/helm/*.tgz
+
+# Rebuilder dev-loop artifacts
+scripts/rebuilder/server.pid
