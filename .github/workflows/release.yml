@@ -9,54 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    outputs:
-      release_id: ${{ steps.create.outputs.id }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Generate commit summary
-        id: commits
-        run: |
-          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${{ github.ref_name }}$" | head -1)
-          if [ -n "$PREV_TAG" ]; then
-            RANGE="$PREV_TAG..${{ github.ref_name }}"
-          else
-            RANGE="${{ github.ref_name }}"
-          fi
-          NOTES=$(git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges)
-          echo "PREV_TAG=$PREV_TAG" >> $GITHUB_ENV
-          {
-            echo 'NOTES<<EOF'
-            echo "$NOTES"
-            echo 'EOF'
-          } >> $GITHUB_ENV
-
-      - name: Create release
-        id: create
-        uses: softprops/action-gh-release@v3
-        with:
-          body: |
-            ## Changes since ${{ env.PREV_TAG }}
-
-            ${{ env.NOTES }}
-
-  build-dist:
-    needs: create-release
-    strategy:
-      matrix:
-        include:
-          - os: linux
-            arch: amd64
-          - os: linux
-            arch: arm64
-          - os: darwin
-            arch: amd64
-          - os: darwin
-            arch: arm64
+  goreleaser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -69,24 +22,11 @@ jobs:
           go-version: '1.23'
           check-latest: true
 
-      - name: Build binary
-        run: |
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build \
-            -ldflags "-X github.com/jecklgamis/gatling-server/pkg/version.BuildVersion=${VERSION} -X github.com/jecklgamis/gatling-server/pkg/version.BuildBranch=${{ github.ref_name }}" \
-            -o bin/gatling-server-${{ matrix.os }}-${{ matrix.arch }} cmd/server/gatling-server.go
-          chmod +x bin/gatling-server-${{ matrix.os }}-${{ matrix.arch }}
-
-      - name: Generate SSL certs
-        run: scripts/generate-ssl-certs.sh
-
-      - name: Create distribution
-        run: TARGET_OS=${{ matrix.os }} TARGET_ARCH=${{ matrix.arch }} scripts/create-dist.sh
-
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v3
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v7
         with:
-          files: |
-            dist/*.tar.gz
-            dist/*.sha256
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

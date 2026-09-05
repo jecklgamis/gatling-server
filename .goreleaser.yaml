@@ -1,0 +1,56 @@
+version: 2
+
+project_name: gatling-server
+
+before:
+  hooks:
+    - go mod tidy
+    - scripts/generate-ssl-certs.sh
+
+builds:
+  - id: gatling-server
+    main: ./cmd/server
+    binary: gatling-server
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -X github.com/jecklgamis/gatling-server/pkg/version.BuildVersion={{ .Version }}
+      - -X github.com/jecklgamis/gatling-server/pkg/version.BuildBranch={{ .Tag }}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}-{{ .Os }}-{{ .Arch }}-{{ .Version }}
+    files:
+      - src: configs/*
+        dst: configs
+      - src: scripts/gatling-jar-runner.sh
+        dst: scripts/gatling-jar-runner.sh
+      - src: scripts/dist/run-server.sh
+        dst: run-server.sh
+      - src: server.key
+      - src: server.crt
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - "^Merge "
+
+release:
+  github:
+    owner: jecklgamis
+    name: gatling-server
+  header: |
+    ## gatling-server {{ .Tag }}
