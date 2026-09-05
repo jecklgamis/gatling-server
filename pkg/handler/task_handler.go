@@ -10,7 +10,16 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"regexp"
 )
+
+// taskIdPattern restricts task ids to a safe charset with no path separators
+// or "..", so a value can never be used to escape the workspace directory.
+var taskIdPattern = regexp.MustCompile(`^[A-Za-z0-9-]{1,64}$`)
+
+func isValidTaskId(taskId string) bool {
+	return taskIdPattern.MatchString(taskId)
+}
 
 type TaskHandler struct {
 	WorkspaceOps workspace.Ops
@@ -37,6 +46,10 @@ func (h *TaskHandler) ConsoleLogHandler(w http.ResponseWriter, r *http.Request) 
 func (h *TaskHandler) TaskContextHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskId := vars["taskId"]
+	if !isValidTaskId(taskId) {
+		badRequestWithError(w, fmt.Errorf("invalid task id"))
+		return
+	}
 	taskContext, found := h.TaskOps.GetTaskRuntimeContext(taskId)
 	if !found {
 		notFound(w)
@@ -49,6 +62,10 @@ func (h *TaskHandler) TaskContextHandler(w http.ResponseWriter, r *http.Request)
 func (h *TaskHandler) AbortTaskHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskId := vars["taskId"]
+	if !isValidTaskId(taskId) {
+		badRequestWithError(w, fmt.Errorf("invalid task id"))
+		return
+	}
 	_, found := h.TaskOps.GetTaskRuntimeContext(taskId)
 	if !found {
 		notFound(w)
@@ -66,8 +83,8 @@ func (h *TaskHandler) AbortTaskHandler(w http.ResponseWriter, r *http.Request) {
 func (h *TaskHandler) SimulationLogHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskId := vars["taskId"]
-	if taskId == "" {
-		badRequestWithError(w, fmt.Errorf("requires task id"))
+	if !isValidTaskId(taskId) {
+		badRequestWithError(w, fmt.Errorf("invalid task id"))
 		return
 	}
 	dir := filepath.Join(h.WorkspaceOps.BaseDir(), taskId, "results")
@@ -91,8 +108,8 @@ func (h *TaskHandler) SimulationLogHandler(w http.ResponseWriter, r *http.Reques
 func (h *TaskHandler) serveFileFromWorkspace(w http.ResponseWriter, r *http.Request, file string, contentType string) {
 	vars := mux.Vars(r)
 	taskId := vars["taskId"]
-	if taskId == "" {
-		badRequestWithError(w, fmt.Errorf("requires task id"))
+	if !isValidTaskId(taskId) {
+		badRequestWithError(w, fmt.Errorf("invalid task id"))
 		return
 	}
 	content, err := h.WorkspaceOps.ReadFile(taskId, file)

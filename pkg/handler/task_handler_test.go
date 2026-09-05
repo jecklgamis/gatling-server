@@ -31,6 +31,17 @@ func TestGetMetadata(t *testing.T) {
 	validateOk(t, rr, "application/json")
 }
 
+func TestGetMetadataRejectsPathTraversalTaskId(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := someGetRequest(t, "/task/metadata/whatever")
+	mux.SetURLVars(req, map[string]string{"taskId": "../../../../etc/passwd"})
+
+	workspaceOps := someWorkspace()
+	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager()).MetadataHandler)
+	handler.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %v", rr.Code)
+}
+
 func TestGetConsoleLog(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := someGetRequest(t, "/task/console/some-task-id")
