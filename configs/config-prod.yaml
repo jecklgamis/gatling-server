@@ -11,8 +11,8 @@ workspaceDir: workspace
 uploadDir: uploads
 
 heartbeat:
-  enabled: false
-  frequency: 15s
+  enabled: true
+  frequency: 30s
 
 eventNotifiers:
   - type: sns

@@ -42,7 +42,9 @@ func Start() {
 
 	eventBus := event.NewEventBus()
 	if config.Heartbeat.Enabled {
-		heartbeat.New(config.Heartbeat.Frequency, func() { eventBus.EventC <- event.NewHeartbeatEvent() })
+		if _, err := heartbeat.New(config.Heartbeat.Frequency, func() { eventBus.EventC <- event.NewHeartbeatEvent() }); err != nil {
+			log.Println("Unable to start heartbeat :", err)
+		}
 	}
 	configureEventNotifiers(eventBus, config.EventNotifiers)
 	uploaders := configureUploaders(config.Uploaders)
