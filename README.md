@@ -7,7 +7,8 @@ An API server for running [Gatling](https://gatling.io/) OSS load test simulatio
 ## Features
 
 * Runs simulations packaged as a self-contained jar (simulation classes and resources bundled together)
-* Task submission via HTTP upload or S3 download
+* Task submission via HTTP upload, S3 download, or a generic http(s)/s3 URL
+* Standalone file upload endpoint with a browsable uploads directory
 * Artifact upload to S3 (metadata, console log, results, etc.)
 * Endpoints for task metadata, console log, simulation log, and results
 * HTTP and SNS event notifiers for heartbeat and task lifecycle events
@@ -89,6 +90,34 @@ curl -v -H "Content-Type: application/json" http://localhost:58080/task/download
 }
 ```
 
+### Via a generic submit (upload once, submit anywhere)
+
+Upload a jar to get a URL back, then submit a task referencing any http(s) or s3 URL — including the one you just
+got:
+
+```bash
+curl -H "Authorization: Bearer ${API_TOKEN}" -F "file=@target/gatling-scala-example.jar" http://localhost:58080/upload
+# => {"id":"<uuid>"}
+```
+
+Uploaded files are stored at `uploads/<uuid>/<filename>` and served directly (no auth) from `/uploads/<uuid>/<filename>`.
+
+```bash
+curl -v -H "Content-Type: application/json" http://localhost:58080/task/submit -d @request.json
+```
+
+`request.json`:
+
+```json
+{
+  "url": "http://localhost:58080/uploads/<uuid>/gatling-scala-example.jar",
+  "simulation": "gatling.test.example.simulation.ExampleSimulation",
+  "javaOpts": "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPerSecond=1"
+}
+```
+
+`url` also accepts `s3://...` locations, in which case this behaves the same as the S3 download flow above.
+
 ### Aborting a task
 
 ```bash
@@ -107,7 +136,8 @@ are available directly from the server, and are also uploaded to S3 if an S3 upl
 | Simulation log | `http://localhost:58080/task/simulationLog/{taskId}` |
 | Test report    | `http://localhost:58080/task/results/{taskId}`       |
 
-The test report is a downloadable `tar.gz` archive.
+The test report is a downloadable `tar.gz` archive. The whole workspace directory (one subdirectory per task,
+containing the raw files above) is also browsable directly at `http://localhost:58080/workspace/{taskId}/`.
 
 ## Authoring Simulations
 
