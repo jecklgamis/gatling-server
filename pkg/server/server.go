@@ -95,7 +95,8 @@ func Start() {
 	router.HandleFunc("/blackhole", handler.BlackholeHandler)
 
 	fs := http.FileServer(http.Dir(workspace.BaseDir() + "/"))
-	router.PathPrefix("/").Handler(fs)
+	router.PathPrefix("/workspace/").Handler(http.StripPrefix("/workspace/", fs))
+	router.HandleFunc("/", handler.RootHandler)
 	printRoutes(router)
 	router.Use(accesslog.AccessLoggerMiddleware)
 
