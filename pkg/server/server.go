@@ -66,17 +66,25 @@ func Start() {
 	httpUploadHandler := handler.NewHttpUploadHandler(workspace, taskManager, uploadDir, apiToken)
 	router.HandleFunc("/task/upload/http", httpUploadHandler.Handle)
 
+	fileUploadHandler := handler.NewFileUploadHandler(uploadDir, apiToken)
+	router.HandleFunc("/upload", fileUploadHandler.Handle)
+	router.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
+
+	var s3ops s3.S3Ops
 	s3Config, found := config.Downloaders["s3"]
 	if found && s3Config.Enabled {
 		region, found := s3Config.ConfigMap["region"]
 		if found {
-			s3ops := s3.NewS3Manager(region)
+			s3ops = s3.NewS3Manager(region)
 			s3DownloadHandler := handler.NewS3DownloadHandler(workspace, taskManager, s3ops, apiToken)
 			router.HandleFunc("/task/download/s3", s3DownloadHandler.Handle)
 		} else {
 			log.Println("S3 downloader missing region config")
 		}
 	}
+
+	apiHandler := handler.NewApiHandler(workspace, taskManager, s3ops, apiToken)
+	router.HandleFunc("/task/submit", apiHandler.Handle)
 	taskHandler := handler.NewTaskHandler(workspace, taskManager)
 	router.HandleFunc("/task/{taskId}", taskHandler.TaskContextHandler)
 	router.HandleFunc("/task/metadata/{taskId}", taskHandler.MetadataHandler)
