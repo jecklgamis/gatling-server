@@ -59,7 +59,8 @@ func (g *Gatling) RunSimulation(commandOps cmdexec.CommandExecutionOps, task *Ta
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("JAVA_OPTS=%s", task.JavaOpts))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("JAR_FILE=%s/*", userFilesDir.Simulations))
+	log.Println("JAVA_OPTS:", task.JavaOpts)
 	log.Printf("About to execute command [%v]\n", cmd)
-	err := commandOps.ExecuteAndLog(cmd, filepath.Join(task.UserFilesDir.BaseDir, "console.log"))
+	err := commandOps.ExecuteAndLog(cmd, filepath.Join(task.UserFilesDir.BaseDir, "console.log"), task.Id)
 	return cmd, err
 }

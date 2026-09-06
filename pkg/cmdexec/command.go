@@ -2,6 +2,7 @@ package cmdexec
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -21,13 +22,12 @@ func NewCommandExecutor() *CommandExecutor {
 	return &CommandExecutor{}
 }
 
-// these commands do not call cmd.Wait(), the client is expected to call it to get the result
+// this command does not call cmd.Wait(), the client is expected to call it to get the result
 type CommandExecutionOps interface {
-	Execute(cmd *exec.Cmd) error
-	ExecuteAndLog(cmd *exec.Cmd, filename string) error
+	ExecuteAndLog(cmd *exec.Cmd, filename string, taskId string) error
 }
 
-func (c *CommandExecutor) ExecuteAndLog(cmd *exec.Cmd, filename string) error {
+func (c *CommandExecutor) ExecuteAndLog(cmd *exec.Cmd, filename string, taskId string) error {
 	f, err := os.Create(filename)
 	if err != nil {
 		log.Println("Unable to open file for writing :", err)
@@ -47,7 +47,9 @@ func (c *CommandExecutor) ExecuteAndLog(cmd *exec.Cmd, filename string) error {
 		f.Close()
 		return err
 	}
-	writer := newLimitedWriter(f, maxLogFileSize)
+	fileWriter := newPrefixWriter(newLimitedWriter(f, maxLogFileSize), taskId)
+	stdoutWriter := newPrefixWriter(os.Stdout, taskId)
+	writer := io.MultiWriter(fileWriter, stdoutWriter)
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() { defer wg.Done(); readPipe(stdout, writer) }()
@@ -107,4 +109,29 @@ func (l *limitedWriter) Write(p []byte) (int, error) {
 	n, err := l.w.Write(toWrite)
 	l.remaining -= int64(n)
 	return len(p), err
+}
+
+// prefixWriter writes each incoming chunk to the underlying writer with a
+// fixed prefix prepended. It is safe for concurrent use since stdout and
+// stderr are read into the same destination on separate goroutines.
+type prefixWriter struct {
+	mu     sync.Mutex
+	w      io.Writer
+	prefix string
+}
+
+func newPrefixWriter(w io.Writer, taskId string) *prefixWriter {
+	return &prefixWriter{w: w, prefix: fmt.Sprintf("[%s] ", taskId)}
+}
+
+func (p *prefixWriter) Write(b []byte) (int, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if _, err := io.WriteString(p.w, p.prefix); err != nil {
+		return 0, err
+	}
+	if _, err := p.w.Write(b); err != nil {
+		return 0, err
+	}
+	return len(b), nil
 }

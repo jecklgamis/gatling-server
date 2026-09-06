@@ -10,10 +10,6 @@ func NewFakeCommandExecutor(errorToReturn error) *FakeCommandExecutor {
 	return &FakeCommandExecutor{errorToReturn}
 }
 
-func (f *FakeCommandExecutor) Execute(_ *exec.Cmd) error {
-	return f.errorToReturn
-}
-
-func (f *FakeCommandExecutor) ExecuteAndLog(_ *exec.Cmd, _ string) error {
+func (f *FakeCommandExecutor) ExecuteAndLog(_ *exec.Cmd, _ string, _ string) error {
 	return f.errorToReturn
 }

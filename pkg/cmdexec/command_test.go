@@ -21,7 +21,7 @@ func TestExecuteCommand(t *testing.T) {
 func TestExecuteAndLog(t *testing.T) {
 	console, err := ioutil.TempFile("", "console.log")
 	test.Assertf(t, err == nil, "unable to create file :%v", err)
-	err = NewCommandExecutor().ExecuteAndLog(exec.Command("ifconfig"), console.Name())
+	err = NewCommandExecutor().ExecuteAndLog(exec.Command("ifconfig"), console.Name(), "test-task-id")
 	test.Assertf(t, err == nil, "unable to execute command :%v", err)
 	test.Assertf(t, fileioutil.FileExist(console.Name()), "failed to execute command")
 }

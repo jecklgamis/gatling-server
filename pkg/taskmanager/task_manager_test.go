@@ -74,10 +74,9 @@ func createSomeGatlingTask() *gatling.Task {
 }
 
 func fakeGatlingOps(delay time.Duration) gatling.Ops {
-	return gatling.RunSimulationFunc(func(commandOps cmdexec.CommandExecutionOps, task *gatling.Task) (*exec.Cmd, error) {
+	return gatling.RunSimulationFunc(func(_ cmdexec.CommandExecutionOps, task *gatling.Task) (*exec.Cmd, error) {
 		cmd := exec.Command("sleep", fmt.Sprintf("%v", delay))
-		err := commandOps.Execute(cmd)
-		if err != nil {
+		if err := cmd.Start(); err != nil {
 			return nil, err
 		}
 		return cmd, nil
