@@ -6,11 +6,22 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/jsonutil"
 	"github.com/jecklgamis/gatling-server/pkg/s3"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func tempDir() string {
+	dir, _ := ioutil.TempDir("", "")
+	return dir
+}
+
+func tempFile(filename string) string {
+	return filepath.Join(tempDir(), filename)
+}
 
 func TestApiHandlerWithInvalidMethod(t *testing.T) {
 	rr := httptest.NewRecorder()

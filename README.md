@@ -26,7 +26,6 @@ An API server for running [Gatling](https://gatling.io/) OSS load test simulatio
 | `/upload`                          | POST   | Bearer | multipart: `file`                                            | Upload any file; returns `{"id": "<uuid>"}`                        |
 | `/uploads/{id}/{filename}`         | GET    | —      | —                                                            | Download/browse an uploaded file                                   |
 | `/task/submit`                     | POST   | Bearer | JSON: `simulation`, `javaOpts`, `url` (http(s) or s3)         | Download the jar from `url` and submit + run it                    |
-| `/task/download/s3`                | POST   | Bearer | JSON: `simulation`, `javaOpts`, `url` (s3 only)               | Same as above, S3-only (kept for compatibility; needs S3 downloader enabled) |
 | `/task/{taskId}`                   | GET    | —      | —                                                            | Task runtime status                                                 |
 | `/task/metadata/{taskId}`          | GET    | —      | —                                                            | Original submission metadata                                        |
 | `/task/console/{taskId}`           | GET    | —      | —                                                            | Raw JVM console log                                                 |
@@ -90,34 +89,6 @@ curl -v \
 
 The response includes a `taskId`, used to query the server for artifacts such as console logs or Gatling reports.
 
-### Via S3 download
-
-Enable the S3 downloader in `configs/config-<env>.yaml`:
-
-```yaml
-downloaders:
-  s3:
-    enabled: true
-    configMap:
-      region: some-region
-```
-
-Then submit a task referencing a jar already in S3:
-
-```bash
-curl -v -H "Content-Type: application/json" http://localhost:58080/task/download/s3 -d @request.json
-```
-
-`request.json`:
-
-```json
-{
-  "url": "s3://gatling-server-incoming/gatling-scala-example.jar",
-  "simulation": "gatling.test.example.simulation.ExampleSimulation",
-  "javaOpts": "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPerSecond=1"
-}
-```
-
 ### Via a generic submit (upload once, submit anywhere)
 
 Upload a jar to get a URL back, then submit a task referencing any http(s) or s3 URL — including the one you just
@@ -144,7 +115,15 @@ curl -v -H "Content-Type: application/json" http://localhost:58080/task/submit -
 }
 ```
 
-`url` also accepts `s3://...` locations, in which case this behaves the same as the S3 download flow above.
+`url` also accepts `s3://...` locations. This requires the S3 downloader to be enabled in `configs/config-<env>.yaml`:
+
+```yaml
+downloaders:
+  s3:
+    enabled: true
+    configMap:
+      region: some-region
+```
 
 ### Aborting a task
 

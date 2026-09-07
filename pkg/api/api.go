@@ -9,12 +9,6 @@ type SubmitTaskRequest struct {
 	Url        string `json:"url"`
 }
 
-type S3DownloadTaskRequest struct {
-	Simulation string `json:"simulation"`
-	JavaOpts   string `json:"javaOpts"`
-	Url        string `json:"url"`
-}
-
 type FileUploadTaskRequest struct {
 	Simulation string `json:"simulation"`
 	JavaOpts   string `json:"javaOpts"`

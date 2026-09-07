@@ -27,7 +27,7 @@ func TestDownloadJarSimulationFromS3(t *testing.T) {
 	bucket, _, err := s3.ParseS3Uri(s3url)
 	test.Assert(t, err == nil, "unable to parse s3 url")
 
-	request := &api.S3DownloadTaskRequest{
+	request := &api.SubmitTaskRequest{
 		Url:        fmt.Sprintf("s3://%s/gatling-scala-example-lean.jar", bucket),
 		Simulation: "gatling.test.example.simulation.ExampleSimulation",
 		JavaOpts:   "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPerSecond=1"}
@@ -35,7 +35,7 @@ func TestDownloadJarSimulationFromS3(t *testing.T) {
 	requestBytes, err := json.Marshal(request)
 	test.Assert(t, err == nil, "unable to serialize request")
 
-	url := fmt.Sprintf("%s/task/download/s3", baseUrl)
+	url := fmt.Sprintf("%s/task/submit", baseUrl)
 	reader := strings.NewReader(string(requestBytes))
 	resp, err := http.Post(url, "application/json", reader)
 

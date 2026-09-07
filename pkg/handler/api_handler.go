@@ -27,8 +27,7 @@ const (
 
 // ApiHandler accepts a generic task submission request whose Url may point to
 // either an http(s) location or an s3:// location, downloads the referenced
-// jar accordingly, and submits it as a task - unifying HttpUploadHandler's
-// and S3DownloadHandler's submission flow behind a single endpoint.
+// jar accordingly, and submits it as a task.
 type ApiHandler struct {
 	WorkspaceOps workspace.Ops
 	TaskOps      taskmanager.Ops
