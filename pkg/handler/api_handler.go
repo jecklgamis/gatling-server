@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jecklgamis/gatling-server/pkg/api"
-	"github.com/jecklgamis/gatling-server/pkg/fileioutil"
 	"github.com/jecklgamis/gatling-server/pkg/gatling"
 	"github.com/jecklgamis/gatling-server/pkg/s3"
 	"github.com/jecklgamis/gatling-server/pkg/taskmanager"
@@ -99,7 +98,7 @@ func (h *ApiHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	storePath, err := h.download(request.Url, userFilesDir.BaseDir)
+	storePath, err := h.download(request.Url, userFilesDir.Simulations)
 	if err != nil {
 		slog.Error("Unable to download file", "error", err)
 		badRequestWithError(w, fmt.Errorf("unable to download file"))
@@ -113,12 +112,6 @@ func (h *ApiHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	task := gatling.NewTask(taskId, request.Simulation, request.JavaOpts, userFilesDir)
 	task.FileType = "jar"
 	slog.Info("Submitting simulation", "filename", filename)
-	destPath := filepath.Join(userFilesDir.Simulations, filename)
-	if err := fileioutil.CopyFile(*storePath, destPath); err != nil {
-		slog.Error("Unable to copy downloaded file to user files dir", "error", err)
-		internalServerError(w)
-		return
-	}
 	metadata := &Metadata{TaskId: taskId, Simulation: request.Simulation, JavaOpts: request.JavaOpts}
 	if err := writeMetadata(userFilesDir.BaseDir, metadata, "metadata.json"); err != nil {
 		slog.Error("Unable write metadata file", "error", err)
