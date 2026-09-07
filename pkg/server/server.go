@@ -111,7 +111,9 @@ func Start() {
 				WriteTimeout: 15 * time.Second,
 				ReadTimeout:  15 * time.Second,
 			}
-			log.Fatal(srv.ListenAndServeTLS(config.Server.Https.CertFile, config.Server.Https.KeyFile))
+			if err := srv.ListenAndServeTLS(config.Server.Https.CertFile, config.Server.Https.KeyFile); err != nil {
+				log.Println("HTTPS server stopped :", err)
+			}
 		}()
 	}
 	if config.Server.Http.Port > 0 {
@@ -124,7 +126,9 @@ func Start() {
 				WriteTimeout: 15 * time.Second,
 				ReadTimeout:  15 * time.Second,
 			}
-			log.Fatal(srv.ListenAndServe())
+			if err := srv.ListenAndServe(); err != nil {
+				log.Println("HTTP server stopped :", err)
+			}
 		}()
 	}
 	for {
