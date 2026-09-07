@@ -32,7 +32,7 @@ run:
 	docker run --rm -v $(HOME)/.kube/config:/home/app/.kube/config -p 58080:58080 -p 58443:8443  -e DO_TOKEN=$(DO_TOKEN) -i -t $(IMAGE_NAME):$(IMAGE_TAG)
 run-bash:
 	@docker run -i -t $(IMAGE_NAME):$(IMAGE_TAG) /bin/bash
-login:
+exec-bash:
 	@docker exec -it `docker ps | grep $(IMAGE_NAME) | awk '{print $$1}'` /bin/bash
 install-deps:
 	@brew install golangci-lint
