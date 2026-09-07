@@ -3,8 +3,6 @@ server:
     port: 58080
   https:
     port: 58443
-    keyFile: configs/server.key
-    certFile: configs/server.crt
 
 scriptsDir: ../../scripts
 workspaceDir: repos

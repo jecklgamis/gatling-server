@@ -3,8 +3,6 @@ server:
     port: 58080
   https:
     port: 58443
-    keyFile: testdata/server.key
-    certFile: testdata/server.crt
 
 scriptsDir: scripts
 workspaceDir: workspace
