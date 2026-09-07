@@ -7,7 +7,8 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/fileioutil"
 	"github.com/jecklgamis/gatling-server/pkg/s3"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
-	"io/ioutil"
+	"os"
+
 	"path/filepath"
 	"testing"
 )
@@ -26,7 +27,7 @@ func TestUploadResults(t *testing.T) {
 	userFilesDir := someUserFilesDir()
 	resultsTarGzPath := filepath.Join(userFilesDir.BaseDir, "results.tar.gz")
 	println("resultsTarGzPath", resultsTarGzPath)
-	err := ioutil.WriteFile(resultsTarGzPath, []byte("some-data"), 0744)
+	err := os.WriteFile(resultsTarGzPath, []byte("some-data"), 0744)
 	test.Assertf(t, err == nil, "failed to create test data :%v", err)
 
 	someTaskId := uuid.New().String()[0:8]

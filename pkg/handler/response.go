@@ -67,7 +67,9 @@ func okWithJson(w http.ResponseWriter, entity interface{}) {
 func okWithEntity(w http.ResponseWriter, contentType string, data []byte) {
 	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		slog.Error("Unable to write response body", "error", err)
+	}
 }
 
 func ok(w http.ResponseWriter) {

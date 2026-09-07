@@ -5,7 +5,8 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/s3"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
-	"io/ioutil"
+	"os"
+
 	"path/filepath"
 	"testing"
 )
@@ -32,7 +33,7 @@ func TestUploadFailure(t *testing.T) {
 }
 
 func someUserFilesDir() *workspace.UserFilesDir {
-	dir, _ := ioutil.TempDir("", "")
+	dir, _ := os.MkdirTemp("", "")
 	userFilesDir, _ := workspace.NewUserFilesDir(filepath.Join(dir, "user-files-dir"))
 	return userFilesDir
 }

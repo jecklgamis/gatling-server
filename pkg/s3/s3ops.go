@@ -74,7 +74,11 @@ func (s *S3Manager) Download(bucket string, key string, dir string) (*string, er
 		slog.Error("Failed to create file", "error", err)
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			slog.Error("Unable to close downloaded file", "error", closeErr)
+		}
+	}()
 	numBytes, err := downloader.Download(file,
 		&s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)})
 	if err != nil {

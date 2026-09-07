@@ -6,7 +6,8 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/fileioutil"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
-	"io/ioutil"
+	"os"
+
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -73,23 +74,23 @@ func TestAbortSimulation(t *testing.T) {
 		t.Skip()
 	}
 	server := httptest.NewServer(http.HandlerFunc(okHandler))
-	task := someGatlingTask(t, fmt.Sprintf(server.URL))
+	task := someGatlingTask(t, server.URL)
 	cmd, _ := SomeGatling().RunSimulation(cmdexec.NewCommandExecutor(), task)
 	go func() {
 		time.Sleep(3 * time.Second)
-		cmd.Process.Kill()
+		_ = cmd.Process.Kill()
 	}()
 	err := cmd.Wait()
 	test.Assertf(t, strings.Contains(err.Error(), "signal: killed"), "expecting killed process")
 }
 
 func someGatlingTask(t *testing.T, targetUrl string) *Task {
-	userFilesPath, _ := ioutil.TempDir("", "")
+	userFilesPath, _ := os.MkdirTemp("", "")
 	userFilesDir, _ := workspace.NewUserFilesDir(filepath.Join(userFilesPath, "user-files-dir"))
 	test.Assertf(t, userFilesDir != nil, "nil user files dir")
-	fileioutil.CopyFile("testdata/gatling-scala-example.jar",
-		fmt.Sprintf("%s/gatling-scala-example.jar",
-			userFilesDir.Simulations))
+	test.Assertf(t, fileioutil.CopyFile("testdata/gatling-scala-example.jar",
+		fmt.Sprintf("%s/gatling-scala-example.jar", userFilesDir.Simulations)) == nil,
+		"unable to copy jar fixture")
 	task := NewTask("some-task-id", "gatling.test.example.simulation.ExampleSimulation",
 		fmt.Sprintf("-DbaseUrl=%s -DdurationMin=0.10 -DrequestPerSecond=1", targetUrl), userFilesDir)
 	task.FileType = "jar"

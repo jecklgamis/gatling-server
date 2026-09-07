@@ -34,7 +34,11 @@ func CreateMultipartRequest(uploadURL string, filename string, kv map[string]str
 			slog.Error("Unable to open file", "filename", filename, "error", err)
 			return nil, err
 		}
-		defer file.Close()
+		defer func() {
+			if closeErr := file.Close(); closeErr != nil {
+				slog.Error("Unable to close file", "error", closeErr)
+			}
+		}()
 		part, err := writer.CreateFormFile("file", filepath.Base(file.Name()))
 		if err != nil {
 			slog.Error("Unable to create form", "error", err)
@@ -58,7 +62,10 @@ func CreateMultipartRequest(uploadURL string, filename string, kv map[string]str
 			return nil, err
 		}
 	}
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		slog.Error("Unable to close multipart writer", "error", err)
+		return nil, err
+	}
 	request, err := http.NewRequest("POST", uploadURL, body)
 	if err != nil {
 		slog.Error("Unable to create request", "error", err)

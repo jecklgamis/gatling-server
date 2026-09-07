@@ -1,10 +1,12 @@
 package s3
 
 import (
+	"os"
+
 	"github.com/jecklgamis/gatling-server/pkg/env"
 	"github.com/jecklgamis/gatling-server/pkg/fileioutil"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
-	"io/ioutil"
+
 	"testing"
 )
 
@@ -24,7 +26,7 @@ func TestDownloadS3File(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
-	dir, _ := ioutil.TempDir("", "")
+	dir, _ := os.MkdirTemp("", "")
 	s3Ops := NewS3Manager(env.GetOrPanic("AWS_REGION"))
 	bucket, _, err := ParseS3Uri(env.GetOrPanic("GATLING_SERVER_INCOMING_S3_URL"))
 	test.Assertf(t, err == nil, "failed to parse s3 url")

@@ -11,7 +11,7 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/taskmanager"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
 	"io"
-	"io/ioutil"
+
 	"log/slog"
 	"net"
 	"net/http"
@@ -75,7 +75,11 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		badRequestWithError(w, fmt.Errorf("no file uploaded"))
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			slog.Error("Unable to close uploaded file", "error", err)
+		}
+	}()
 
 	filename := filepath.Base(header.Filename)
 	if !hasValidFileExt(filename) {
@@ -154,7 +158,7 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 func writeMetadata(dir string, metadata *Metadata, filename string) error {
 	path := filepath.Join(dir, filename)
-	err := ioutil.WriteFile(path, []byte(jsonutil.ToJson(metadata)), 0640)
+	err := os.WriteFile(path, []byte(jsonutil.ToJson(metadata)), 0640)
 	if err != nil {
 		slog.Error("Failed writing", "path", path, "error", err)
 		return err
@@ -168,7 +172,11 @@ func streamToFile(src io.Reader, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer output.Close()
+	defer func() {
+		if closeErr := output.Close(); closeErr != nil {
+			slog.Error("Unable to close output file", "error", closeErr)
+		}
+	}()
 	_, err = io.Copy(output, src)
 	return err
 }

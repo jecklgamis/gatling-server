@@ -9,7 +9,6 @@ import (
 )
 
 func nextPort() int {
-	rand.Seed(time.Now().UTC().UnixNano())
 	return rand.Intn(65535-1025) + 1025
 }
 

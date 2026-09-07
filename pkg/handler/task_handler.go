@@ -6,7 +6,8 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/fileioutil"
 	"github.com/jecklgamis/gatling-server/pkg/taskmanager"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
-	"io/ioutil"
+	"os"
+
 	"log/slog"
 	"net/http"
 	"path/filepath"
@@ -97,7 +98,7 @@ func (h *TaskHandler) SimulationLogHandler(w http.ResponseWriter, r *http.Reques
 		notFound(w)
 		return
 	}
-	bytes, err := ioutil.ReadFile(simulationLog)
+	bytes, err := os.ReadFile(simulationLog)
 	if err != nil {
 		notFound(w)
 		return

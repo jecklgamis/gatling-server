@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
 	"github.com/jecklgamis/gatling-server/pkg/uploader"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -43,7 +42,7 @@ func TestFileUploadWithNoFileAttachment(t *testing.T) {
 }
 
 func TestFileUploadRateLimitedAfterTooManyFailedAuthAttempts(t *testing.T) {
-	uploadDir, _ := ioutil.TempDir("", "uploads")
+	uploadDir, _ := os.MkdirTemp("", "uploads")
 	handler := http.HandlerFunc(NewFileUploadHandler(uploadDir, someApiToken).Handle)
 	for i := 0; i < authMaxFailures; i++ {
 		rr := httptest.NewRecorder()
@@ -61,7 +60,7 @@ func TestFileUploadDirMustBeAbsolute(t *testing.T) {
 }
 
 func TestFileUploadStoresFileUnderUuidDir(t *testing.T) {
-	uploadDir, _ := ioutil.TempDir("", "uploads")
+	uploadDir, _ := os.MkdirTemp("", "uploads")
 	handler := NewFileUploadHandler(uploadDir, someApiToken)
 	req := createFileUploadHttpRequestTo(t, "testdata/some.txt", someApiToken)
 	rr := httptest.NewRecorder()
@@ -79,7 +78,7 @@ func TestFileUploadStoresFileUnderUuidDir(t *testing.T) {
 }
 
 func createFileUploadHandler() http.Handler {
-	uploadDir, _ := ioutil.TempDir("", "uploads")
+	uploadDir, _ := os.MkdirTemp("", "uploads")
 	return http.HandlerFunc(NewFileUploadHandler(uploadDir, someApiToken).Handle)
 }
 

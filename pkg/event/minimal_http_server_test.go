@@ -22,14 +22,18 @@ func (m *MinimalHttpServer) handle(path string, handler http.Handler) *MinimalHt
 }
 
 func NewMinimalHttpServer() *MinimalHttpServer {
-	addr := fmt.Sprintf("localhost:0")
+	addr := "localhost:0"
 	mux := http.NewServeMux()
 	server := &http.Server{Addr: addr, Handler: mux}
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		panic(err)
 	}
-	go server.Serve(listener)
+	go func() {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			panic(err)
+		}
+	}()
 	port := listener.Addr().(*net.TCPAddr).Port
 	return &MinimalHttpServer{mux, server, fmt.Sprintf("http://localhost:%d", port)}
 }

@@ -1,15 +1,16 @@
 package tarutil
 
 import (
+	"os"
+
 	"github.com/jecklgamis/gatling-server/pkg/fileioutil"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
-	"io/ioutil"
 	"path/filepath"
 	"testing"
 )
 
 func TestExtractTarGz(t *testing.T) {
-	dir, _ := ioutil.TempDir("", "")
+	dir, _ := os.MkdirTemp("", "")
 	err := Extract("testdata/gatling-scala-example-user-files.tar.gz", dir)
 	test.Assert(t, err == nil, "failed to extract archive")
 	test.Assertf(t, fileioutil.DirExists(filepath.Join(dir, "bodies")), "expecting bodies directory")
@@ -18,11 +19,11 @@ func TestExtractTarGz(t *testing.T) {
 }
 
 func TestCompressDir(t *testing.T) {
-	srcDir, _ := ioutil.TempDir("", "src")
+	srcDir, _ := os.MkdirTemp("", "src")
 	err := fileioutil.CopyFile("testdata/some.txt", filepath.Join(srcDir, "some.txt"))
 	test.Assertf(t, err == nil, "unable to copy file %v", err)
 
-	dstDir, _ := ioutil.TempDir("", "dst")
+	dstDir, _ := os.MkdirTemp("", "dst")
 
 	err = CompressDir(srcDir, dstDir, "some.tar.gz")
 	test.Assertf(t, err == nil, "unable to archive")

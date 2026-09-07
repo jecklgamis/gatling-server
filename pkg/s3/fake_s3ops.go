@@ -1,8 +1,8 @@
 package s3
 
 import (
-	"io/ioutil"
 	"log/slog"
+	"os"
 )
 
 type FakeS3Ops struct {
@@ -20,7 +20,7 @@ func (f *FakeS3Ops) Upload(_ string, _ string, _ string) error {
 }
 
 func (f *FakeS3Ops) DownloadUrl(string, string) (*string, error) {
-	err := ioutil.WriteFile(f.storePath, f.downloadData, 0744)
+	err := os.WriteFile(f.storePath, f.downloadData, 0744)
 	if err != nil {
 		slog.Error("Unable to write fake download data", "error", err)
 	}
@@ -28,7 +28,7 @@ func (f *FakeS3Ops) DownloadUrl(string, string) (*string, error) {
 }
 
 func (f *FakeS3Ops) Download(string, string, string) (*string, error) {
-	err := ioutil.WriteFile(f.storePath, f.downloadData, 0744)
+	err := os.WriteFile(f.storePath, f.downloadData, 0744)
 	if err != nil {
 		slog.Error("Unable to write fake download data", "error", err)
 	}

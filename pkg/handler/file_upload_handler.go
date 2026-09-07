@@ -56,7 +56,11 @@ func (h *FileUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		badRequestWithError(w, fmt.Errorf("no file uploaded"))
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			slog.Error("Unable to close uploaded file", "error", err)
+		}
+	}()
 
 	filename := filepath.Base(header.Filename)
 	id := uuid.New().String()

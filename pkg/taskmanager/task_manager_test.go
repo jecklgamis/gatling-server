@@ -8,7 +8,8 @@ import (
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
 	"github.com/jecklgamis/gatling-server/pkg/uploader"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
-	"io/ioutil"
+	"os"
+
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -142,9 +143,9 @@ func TestAbortTask(t *testing.T) {
 }
 
 func createSomeGatlingTask() *gatling.Task {
-	tmpDir, _ := ioutil.TempDir("", "")
+	tmpDir, _ := os.MkdirTemp("", "")
 	userFilesDir, _ := workspace.NewUserFilesDir(filepath.Join(tmpDir, "repos"))
-	fileioutil.CopyFile("testdata/SingleFileExampleSimulation.scala",
+	_ = fileioutil.CopyFile("testdata/SingleFileExampleSimulation.scala",
 		fmt.Sprintf("%s/SingleFileExampleSimulation.scala",
 			userFilesDir.Simulations))
 	return gatling.NewTask(CreateTaskId(), "gatling.test.example.simulation.SingleFileExampleSimulation",

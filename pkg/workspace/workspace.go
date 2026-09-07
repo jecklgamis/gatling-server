@@ -1,8 +1,10 @@
 package workspace
 
 import (
+	"os"
+
 	server "github.com/jecklgamis/gatling-server/pkg/fileioutil"
-	"io/ioutil"
+
 	"log/slog"
 	"path/filepath"
 )
@@ -31,7 +33,7 @@ func (w *Workspace) NewUserFilesDir(id string) (*UserFilesDir, error) {
 }
 
 func (w *Workspace) ReadFile(id, filename string) ([]byte, error) {
-	return ioutil.ReadFile(filepath.Join(w.baseDir, id, filename))
+	return os.ReadFile(filepath.Join(w.baseDir, id, filename))
 }
 
 func (r *Workspace) BaseDir() string {

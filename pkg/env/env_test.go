@@ -8,7 +8,7 @@ import (
 )
 
 func TestGetOrElse(t *testing.T) {
-	os.Setenv("some-key", "some-value")
+	test.Assertf(t, os.Setenv("some-key", "some-value") == nil, "unable to set env var")
 	if v := GetOrElse("some-key", ""); v != "some-value" {
 		t.Errorf("Got %s, expecting %s", v, "some-default")
 	}

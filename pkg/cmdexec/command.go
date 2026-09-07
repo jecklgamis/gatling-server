@@ -35,16 +35,16 @@ func (c *CommandExecutor) ExecuteAndLog(cmd *exec.Cmd, filename string, taskId s
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return err
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return err
 	}
 	if err := cmd.Start(); err != nil {
-		f.Close()
+		_ = f.Close()
 		return err
 	}
 	fileWriter := newPrefixWriter(newLimitedWriter(f, maxLogFileSize), taskId)
@@ -54,7 +54,12 @@ func (c *CommandExecutor) ExecuteAndLog(cmd *exec.Cmd, filename string, taskId s
 	wg.Add(2)
 	go func() { defer wg.Done(); readPipe(stdout, writer) }()
 	go func() { defer wg.Done(); readPipe(stderr, writer) }()
-	go func() { wg.Wait(); f.Close() }()
+	go func() {
+		wg.Wait()
+		if err := f.Close(); err != nil {
+			slog.Error("Unable to close log file", "error", err)
+		}
+	}()
 	return nil
 }
 
@@ -75,7 +80,10 @@ func readPipe(readCloser io.ReadCloser, writer io.Writer) {
 	for {
 		line, err := reader.ReadString('\n')
 		if len(line) > 0 {
-			writer.Write([]byte(line))
+			if _, writeErr := writer.Write([]byte(line)); writeErr != nil {
+				slog.Error("Unable to write command output", "error", writeErr)
+				return
+			}
 		}
 		if err != nil {
 			return

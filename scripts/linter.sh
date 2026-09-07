@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-result=$(find . -name *.go -exec golint {} \;)
-if [ ! -z "${result}" ]; then
-  echo ${result}
-  echo "Lint failed" && exit 1
-else
-  echo "Lint successful" && exit 0
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+cd "${SCRIPT_DIR}/.."
+
+if ! command -v golangci-lint &>/dev/null; then
+  echo "golangci-lint not found. Install it: https://golangci-lint.run/welcome/install/" >&2
+  exit 1
 fi
+
+golangci-lint run ./...

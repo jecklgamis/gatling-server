@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"os"
+
 	"github.com/jecklgamis/gatling-server/pkg/api"
 	"github.com/jecklgamis/gatling-server/pkg/fileioutil"
 	"github.com/jecklgamis/gatling-server/pkg/jsonutil"
 	"github.com/jecklgamis/gatling-server/pkg/s3"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
-	"io/ioutil"
+
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -15,7 +17,7 @@ import (
 )
 
 func tempDir() string {
-	dir, _ := ioutil.TempDir("", "")
+	dir, _ := os.MkdirTemp("", "")
 	return dir
 }
 

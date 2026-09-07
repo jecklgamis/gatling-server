@@ -12,8 +12,8 @@ import (
 )
 
 func TestServerEndPoints(t *testing.T) {
-	os.Setenv("APP_ENVIRONMENT", "dev")
-	os.Setenv("API_TOKEN", "some-test-api-token")
+	test.Assertf(t, os.Setenv("APP_ENVIRONMENT", "dev") == nil, "unable to set env var")
+	test.Assertf(t, os.Setenv("API_TOKEN", "some-test-api-token") == nil, "unable to set env var")
 	port := test.UnusedPort()
 	go func() {
 		viper.Set("SERVER.HTTP.PORT", fmt.Sprintf("%d", port))

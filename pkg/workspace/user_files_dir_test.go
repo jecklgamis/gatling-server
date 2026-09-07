@@ -1,9 +1,10 @@
 package workspace
 
 import (
+	"os"
+
 	util "github.com/jecklgamis/gatling-server/pkg/fileioutil"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
-	"io/ioutil"
 	"path/filepath"
 	"testing"
 )
@@ -22,7 +23,7 @@ func TestNewUserFilesDir(t *testing.T) {
 }
 
 func TestNewUserFilesDirFailsIfExist(t *testing.T) {
-	dir, err := ioutil.TempDir("", "some-dir")
+	dir, err := os.MkdirTemp("", "some-dir")
 	test.Assert(t, err == nil, "unable create dir")
 	test.Assert(t, util.DirExists(dir), "dir must exist")
 	_, err = NewUserFilesDir(dir)
@@ -35,7 +36,7 @@ func TestNewUserFilesDirFailsIfNotAbsolute(t *testing.T) {
 }
 
 func someNonExistingDir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "")
+	dir, err := os.MkdirTemp("", "")
 	test.Assert(t, err == nil, "unable create dir")
 	return filepath.Join(dir, "some-dir")
 }

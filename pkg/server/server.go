@@ -22,13 +22,16 @@ import (
 
 func printRoutes(router *mux.Router) {
 	slog.Info("Available endpoints:")
-	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+	err := router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		template, err := route.GetPathTemplate()
 		if err == nil {
 			slog.Info(template)
 		}
 		return nil
 	})
+	if err != nil {
+		slog.Error("Unable to walk routes", "error", err)
+	}
 }
 
 func Start() {

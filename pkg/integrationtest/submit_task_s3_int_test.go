@@ -22,7 +22,7 @@ func TestDownloadJarSimulationFromS3(t *testing.T) {
 	viper.Set("DOWNLOADERS.S3.ENABLED", "true")
 	viper.Set("DOWNLOADERS.S3.CONFIGMAP.REGION", env.GetOrPanic("AWS_REGION"))
 	baseUrl := startServer()
-	waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
+	_ = waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
 	s3url := env.GetOrPanic("GATLING_SERVER_INCOMING_S3_URL")
 	bucket, _, err := s3.ParseS3Uri(s3url)
 	test.Assert(t, err == nil, "unable to parse s3 url")

@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"github.com/google/uuid"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
-	"io/ioutil"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestCopyFile(t *testing.T) {
-	dir, _ := ioutil.TempDir("", "")
+	dir, _ := os.MkdirTemp("", "")
 	src := "testdata/gatling-scala-example-user-files.tar.gz"
 	dst := filepath.Join(dir, "gatling-scala-example-user-files.tar.gz")
 	err := CopyFile(src, dst)
@@ -20,7 +20,7 @@ func TestCopyFile(t *testing.T) {
 }
 
 func TestCreateDirIfNotExist(t *testing.T) {
-	temp, _ := ioutil.TempDir("", "")
+	temp, _ := os.MkdirTemp("", "")
 	dst := filepath.Join(temp, "some-temp")
 	test.Assertf(t, !DirExists(dst), "expected non existent dir")
 	test.Assertf(t, CreateDirIfNotExist(dst, 0744) == nil, "unable to create dir")
@@ -29,37 +29,37 @@ func TestCreateDirIfNotExist(t *testing.T) {
 
 func TestWriteBufferToFile(t *testing.T) {
 	buffer := bytes.NewBuffer([]byte("some data"))
-	dir, _ := ioutil.TempDir("", "")
+	dir, _ := os.MkdirTemp("", "")
 	path, _ := WriteBufferToFile(buffer, dir, "temp.txt")
-	data, _ := ioutil.ReadFile(*path)
+	data, _ := os.ReadFile(*path)
 	test.Assertf(t, string(data) == "some data", "unexpected data %v", string(data))
 }
 
 func TestFileExist(t *testing.T) {
-	file, _ := ioutil.TempFile("", "")
+	file, _ := os.CreateTemp("", "")
 	test.Assertf(t, FileExist(file.Name()), "expecting file to exist")
-	dir, _ := ioutil.TempDir("", "")
+	dir, _ := os.MkdirTemp("", "")
 	test.Assertf(t, !FileExist(filepath.Join(dir, "some.txt")), "not expecting file to exist")
 }
 
 func TestWriteBufferToFileFailsOnDir(t *testing.T) {
-	dir, _ := ioutil.TempDir("", "")
+	dir, _ := os.MkdirTemp("", "")
 	test.Assertf(t, !FileExist(dir), "expecting dir to fail")
 }
 
 func TestWriteBufferToFileFailsOnNonExistentDir(t *testing.T) {
-	dir, _ := ioutil.TempDir("", "")
+	dir, _ := os.MkdirTemp("", "")
 	_, err := WriteBufferToFile(&bytes.Buffer{}, filepath.Join(dir, "some-path"), "some-file.txt")
 	test.Assertf(t, err != nil, "expecting to fail")
 }
 
 func TestFindFile(t *testing.T) {
-	dir, _ := ioutil.TempDir("", "")
+	dir, _ := os.MkdirTemp("", "")
 	subDir := filepath.Join(dir, "path1", "path2")
 	err := CreateDirIfNotExist(subDir, 0744)
 	test.Assertf(t, err == nil, "unable to create dirs test file :%v", err)
 
-	err = ioutil.WriteFile(filepath.Join(subDir, "some.txt"), []byte("some-text"), 0744)
+	err = os.WriteFile(filepath.Join(subDir, "some.txt"), []byte("some-text"), 0744)
 	test.Assertf(t, err == nil, "unable to create test file :%v", err)
 
 	path, err := FindFile(dir, "some.txt")

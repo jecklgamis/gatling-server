@@ -7,7 +7,6 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/taskmanager"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -222,7 +221,7 @@ func TestAbortTaskHandlerReturnsInternalServerErrorWhenAbortFails(t *testing.T) 
 
 func someProcess() *os.Process {
 	cmd := exec.Command("ls")
-	cmd.Start()
+	_ = cmd.Start()
 	return cmd.Process
 }
 
@@ -232,22 +231,22 @@ func creteSomeUsersFilesDir(t *testing.T, workspaceOps workspace.Ops, id string)
 
 	file := filepath.Join(userFilesDir.BaseDir, "console.log")
 	content := []byte("some log output")
-	err = ioutil.WriteFile(file, content, 0744)
+	err = os.WriteFile(file, content, 0744)
 	test.Assertf(t, err == nil, "unable to create file :%v", err)
 
 	file = filepath.Join(userFilesDir.Results, "simulation.log")
 	content = []byte("some simulation output")
-	err = ioutil.WriteFile(file, content, 0744)
+	err = os.WriteFile(file, content, 0744)
 	test.Assertf(t, err == nil, "unable to create file :%v", err)
 
 	file = filepath.Join(userFilesDir.BaseDir, "metadata.json")
 	content = []byte(`{"some-key":"some-value"}`)
-	err = ioutil.WriteFile(file, content, 0744)
+	err = os.WriteFile(file, content, 0744)
 	test.Assertf(t, err == nil, "unable to create file :%v", err)
 
 	file = filepath.Join(userFilesDir.BaseDir, "results.tar.gz")
 	content = []byte(`some-tar-content"}`)
-	err = ioutil.WriteFile(file, content, 0744)
+	err = os.WriteFile(file, content, 0744)
 	test.Assertf(t, err == nil, "unable to create file :%v", err)
 
 	return userFilesDir

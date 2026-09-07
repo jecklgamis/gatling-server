@@ -10,7 +10,6 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/uploader"
 	"github.com/jecklgamis/gatling-server/pkg/waiter"
 	"github.com/spf13/viper"
-	"io/ioutil"
 	"log/slog"
 	"net/http"
 	"os"
@@ -22,11 +21,11 @@ import (
 const testApiToken = "some-test-api-token"
 
 func startServer() (baseUrl string) {
-	os.Setenv("APP_ENVIRONMENT", "dev")
-	os.Setenv("API_TOKEN", testApiToken)
+	_ = os.Setenv("APP_ENVIRONMENT", "dev")
+	_ = os.Setenv("API_TOKEN", testApiToken)
 	port := test.UnusedPort()
-	uploadDir, _ := ioutil.TempDir("", "uploads")
-	workspaceDir, _ := ioutil.TempDir("", "repos")
+	uploadDir, _ := os.MkdirTemp("", "uploads")
+	workspaceDir, _ := os.MkdirTemp("", "repos")
 	go func() {
 		viper.Set("SERVER.HTTP.PORT", fmt.Sprintf("%d", port))
 		viper.Set("SERVER.HTTPS.PORT", fmt.Sprintf("%d", test.UnusedPort()))
@@ -36,7 +35,7 @@ func startServer() (baseUrl string) {
 		server.Start()
 	}()
 	baseUrl = fmt.Sprintf("http://localhost:%d", port)
-	waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
+	_ = waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
 	return baseUrl
 }
 
@@ -45,7 +44,7 @@ func TestSubmitJarSimulation(t *testing.T) {
 		t.Skip()
 	}
 	baseUrl := startServer()
-	waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
+	_ = waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
 
 	kv := map[string]string{
 		"simulation": "gatling.test.example.simulation.ExampleSimulation",
@@ -68,7 +67,7 @@ func TestAbortTask(t *testing.T) {
 		t.Skip()
 	}
 	baseUrl := startServer()
-	waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
+	_ = waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
 
 	kv := map[string]string{
 		"simulation": "gatling.test.example.simulation.ExampleSimulation",

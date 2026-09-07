@@ -23,7 +23,9 @@ func NewSNSEventNotifier(sns snsiface.SNSAPI, configMap map[string]string) *SNSE
 }
 
 func (h *SNSEventNotifier) Event(event interface{}) {
-	h.notify(event)
+	if err := h.notify(event); err != nil {
+		slog.Error("Unable to notify event", "error", err)
+	}
 }
 
 func CreateSNS(region string) *sns.SNS {

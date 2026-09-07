@@ -58,7 +58,7 @@ func (c *TaskRuntimeContext) markAborted() {
 	defer c.mu.Unlock()
 	c.Completed = time.Now()
 	c.Status = TaskAborted
-	c.Duration = time.Now().Sub(c.Started)
+	c.Duration = time.Since(c.Started)
 	c.Success = false
 }
 
@@ -168,9 +168,13 @@ func (t *TaskManager) worker(context *TaskRuntimeContext, task *gatling.Task, re
 	slog.Info("Gatling task started", "taskId", task.Id)
 	t.EventChannel <- event.NewTaskStartedEvent(task.Id)
 	defer func() {
-		tarutil.CompressDir(task.UserFilesDir.Results, task.UserFilesDir.BaseDir, "results.tar.gz")
+		if err := tarutil.CompressDir(task.UserFilesDir.Results, task.UserFilesDir.BaseDir, "results.tar.gz"); err != nil {
+			slog.Error("Unable to compress results", "taskId", task.Id, "error", err)
+		}
 		for _, uploader := range t.artifactUploaders {
-			uploader.Upload(task.Id, task.UserFilesDir)
+			if err := uploader.Upload(task.Id, task.UserFilesDir); err != nil {
+				slog.Error("Unable to upload artifacts", "taskId", task.Id, "error", err)
+			}
 		}
 	}()
 	context.markStarted()

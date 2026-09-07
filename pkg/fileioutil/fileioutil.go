@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log/slog"
 	"os"
 	"path/filepath"
 )
 
 func MustReadFile(filename string) []byte {
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		panic(err)
 	}
@@ -27,7 +26,7 @@ func WriteBufferToFile(buffer *bytes.Buffer, dir string, filename string) (*stri
 		return nil, err
 	}
 	storePath := filepath.Join(dir, filename)
-	err = ioutil.WriteFile(storePath, buffer.Bytes(), 0640)
+	err = os.WriteFile(storePath, buffer.Bytes(), 0640)
 	if err != nil {
 		return nil, err
 	}
@@ -73,24 +72,34 @@ func CopyFile(src string, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer input.Close()
+	defer func() { _ = input.Close() }()
 	output, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0640)
 	if err != nil {
 		return err
 	}
-	defer output.Close()
+	defer func() {
+		if closeErr := output.Close(); closeErr != nil {
+			slog.Error("Unable to close output file", "error", closeErr)
+		}
+	}()
 	_, err = io.Copy(output, input)
 	return err
 }
 
-func FindFile(dir string, filename string) (foundPath string, err error) {
-	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err == nil && info.Name() == filename {
+func FindFile(dir string, filename string) (string, error) {
+	var foundPath string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.Name() == filename {
 			foundPath = path
-			return nil
 		}
 		return nil
 	})
+	if err != nil {
+		return "", err
+	}
 	if foundPath == "" {
 		return "", fmt.Errorf("file not found")
 	}

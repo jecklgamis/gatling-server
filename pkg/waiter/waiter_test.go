@@ -10,7 +10,7 @@ import (
 
 func TestWaitUntilCountExceed(t *testing.T) {
 	var numInvocations = 0
-	WaitUntil(100*time.Millisecond, 3, func(counter int) bool {
+	_ = WaitUntil(100*time.Millisecond, 3, func(counter int) bool {
 		numInvocations++
 		return false
 	})
@@ -19,7 +19,7 @@ func TestWaitUntilCountExceed(t *testing.T) {
 
 func TestWaitUntilCallbackReturnsTrue(t *testing.T) {
 	numInvocations := 0
-	WaitUntil(100*time.Millisecond, 3, func(counter int) bool {
+	_ = WaitUntil(100*time.Millisecond, 3, func(counter int) bool {
 		numInvocations++
 		return true
 	})

@@ -30,7 +30,7 @@ func internalServerErrorHandler() http.Handler {
 
 func TestPostEvent(t *testing.T) {
 	server := NewMinimalHttpServer()
-	defer server.close()
+	defer func() { _ = server.close() }()
 	server.handle("/", okHandler())
 	notifier := &HttpEventNotifier{map[string]string{"url": server.URL}}
 	err := notifier.notify(NewHeartbeatEvent())
@@ -39,7 +39,7 @@ func TestPostEvent(t *testing.T) {
 
 func TestPostEventAnd5xxResponse(t *testing.T) {
 	server := NewMinimalHttpServer()
-	defer server.close()
+	defer func() { _ = server.close() }()
 	server.handle("/", internalServerErrorHandler())
 	notifier := &HttpEventNotifier{map[string]string{"url": server.URL}}
 	err := notifier.notify(NewHeartbeatEvent())

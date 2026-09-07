@@ -8,9 +8,9 @@ import (
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
 	"github.com/jecklgamis/gatling-server/pkg/uploader"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -104,7 +104,7 @@ func TestNoFileAttachment(t *testing.T) {
 const someApiToken = "some-test-api-token"
 
 func createHandler() http.Handler {
-	uploadDir, _ := ioutil.TempDir("", "uploads")
+	uploadDir, _ := os.MkdirTemp("", "uploads")
 	httpUploadHandler := NewHttpUploadHandler(someWorkspace(), someTaskManager(), uploadDir, someApiToken)
 	return http.HandlerFunc(httpUploadHandler.Handle)
 }
@@ -114,7 +114,7 @@ func someTaskManager() *taskmanager.TaskManager {
 }
 
 func someWorkspace() *workspace.Workspace {
-	dir, _ := ioutil.TempDir("", "repos")
+	dir, _ := os.MkdirTemp("", "repos")
 	return workspace.NewWorkspace(dir)
 }
 
@@ -155,7 +155,7 @@ func validateSubmitTaskResponse(t *testing.T, rr *httptest.ResponseRecorder) {
 	test.Assertf(t, rr.Header().Get("Content-Type") == "application/json",
 		"unexpected content type %s", rr.Header().Get("Content-Type"))
 	var entity api.SubmitTaskResponse
-	json.Unmarshal(rr.Body.Bytes(), &entity)
+	test.Assertf(t, json.Unmarshal(rr.Body.Bytes(), &entity) == nil, "unable to parse response")
 	test.Assert(t, entity.Ok, "expecting ok result")
 	test.Assert(t, entity.TaskId != "", "task id is empty")
 }

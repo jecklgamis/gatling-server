@@ -10,7 +10,7 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/taskmanager"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
 	"io"
-	"io/ioutil"
+
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -61,7 +61,7 @@ func (h *ApiHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		badRequestWithError(w, fmt.Errorf("body is nil"))
 		return
 	}
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, maxApiTaskRequestSize+1))
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxApiTaskRequestSize+1))
 	if err != nil {
 		slog.Error("Unable to read request body", "error", err)
 		internalServerError(w)
@@ -168,7 +168,11 @@ func downloadHttpFile(rawUrl string, dstDir string) (*string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			slog.Error("Unable to close response body", "error", err)
+		}
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status %d downloading %s", resp.StatusCode, rawUrl)
 	}
@@ -181,7 +185,9 @@ func downloadHttpFile(rawUrl string, dstDir string) (*string, error) {
 		return nil, err
 	}
 	if info.Size() > maxUploadSize {
-		os.Remove(storePath)
+		if err := os.Remove(storePath); err != nil {
+			slog.Error("Unable to remove oversized download", "error", err)
+		}
 		return nil, fmt.Errorf("downloaded file too large")
 	}
 	return &storePath, nil
