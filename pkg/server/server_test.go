@@ -7,11 +7,24 @@ import (
 	"github.com/spf13/viper"
 	"net/http"
 	"os"
+	"os/exec"
 	"testing"
 	"time"
 )
 
+// ensureTestCerts generates the self-signed TLS cert/key pair config-dev.yaml
+// points HTTPS at (testdata/server.{key,crt}), if not already present. These
+// are not committed to the repo, so they must be generated locally.
+func ensureTestCerts(t *testing.T) {
+	if _, err := os.Stat("testdata/server.key"); err == nil {
+		return
+	}
+	cmd := exec.Command("../../scripts/generate-ssl-certs.sh", "testdata")
+	test.Assertf(t, cmd.Run() == nil, "unable to generate test TLS certs")
+}
+
 func TestServerEndPoints(t *testing.T) {
+	ensureTestCerts(t)
 	test.Assertf(t, os.Setenv("APP_ENVIRONMENT", "dev") == nil, "unable to set env var")
 	test.Assertf(t, os.Setenv("API_TOKEN", "some-test-api-token") == nil, "unable to set env var")
 	port := test.UnusedPort()

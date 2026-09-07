@@ -11,6 +11,10 @@
 # Local TLS material (see scripts/generate-ssl-certs.sh)
 /server.crt
 /server.key
+/pkg/server/testdata/server.crt
+/pkg/server/testdata/server.key
+/pkg/integrationtest/configs/server.crt
+/pkg/integrationtest/configs/server.key
 
 # Runtime data dirs created by the running server
 /uploads/

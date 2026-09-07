@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +21,20 @@ import (
 
 const testApiToken = "some-test-api-token"
 
+// ensureTestCerts generates the self-signed TLS cert/key pair config-dev.yaml
+// points HTTPS at (configs/server.{key,crt}), if not already present. These
+// are not committed to the repo, so they must be generated locally.
+func ensureTestCerts() {
+	if _, err := os.Stat("configs/server.key"); err == nil {
+		return
+	}
+	if err := exec.Command("../../scripts/generate-ssl-certs.sh", "configs").Run(); err != nil {
+		slog.Error("Unable to generate test TLS certs", "error", err)
+	}
+}
+
 func startServer() (baseUrl string) {
+	ensureTestCerts()
 	_ = os.Setenv("APP_ENVIRONMENT", "dev")
 	_ = os.Setenv("API_TOKEN", testApiToken)
 	port := test.UnusedPort()
