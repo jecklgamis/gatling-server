@@ -34,6 +34,7 @@ func printRoutes(router *mux.Router) {
 func Start() {
 	appEnv := env.GetOrElse("APP_ENVIRONMENT", "dev")
 	config := ReadConfig(appEnv)
+	slog.SetLogLoggerLevel(ParseLogLevel(config.LogLevel))
 
 	router := mux.NewRouter()
 	router.HandleFunc("/buildInfo", handler.BuildInfoHandler)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 )
 import "github.com/spf13/viper"
@@ -56,6 +57,26 @@ type Config struct {
 	Heartbeat      HeartbeatConfig
 	Downloaders    map[string]DownloaderConfig
 	TaskTimeout    time.Duration
+	LogLevel       string
+}
+
+// ParseLogLevel maps a config log level string (debug/info/warn/error, case
+// insensitive) to a slog.Level, defaulting to Info for empty or unrecognized
+// values.
+func ParseLogLevel(level string) slog.Level {
+	switch strings.ToLower(strings.TrimSpace(level)) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	case "", "info":
+		return slog.LevelInfo
+	default:
+		slog.Warn("Unrecognized log level, defaulting to info", "level", level)
+		return slog.LevelInfo
+	}
 }
 
 func ReadConfig(env string) *Config {

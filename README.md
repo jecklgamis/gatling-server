@@ -66,6 +66,9 @@ curl http://localhost:58080/buildInfo
 HTTP uploads require an API token, sent as a bearer token in the `Authorization` header. It defaults to `default`
 unless the server was started with its own `API_TOKEN`; requests with a missing or invalid token get `401 Unauthorized`.
 
+Log verbosity is set via `logLevel` in `configs/config-<env>.yaml` (`debug`, `info`, `warn`, or `error`; defaults to
+`info` if unset or unrecognized).
+
 ## Submitting a Simulation
 
 Simulations must be packaged as a self-contained (uber) jar containing the compiled simulation classes, resources,

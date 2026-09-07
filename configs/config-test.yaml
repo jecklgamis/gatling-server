@@ -1,3 +1,5 @@
+logLevel: info
+
 server:
   http:
     port: 58080
