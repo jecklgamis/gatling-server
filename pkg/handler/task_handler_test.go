@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/jecklgamis/gatling-server/pkg/gatling"
 	"github.com/jecklgamis/gatling-server/pkg/taskmanager"
@@ -72,6 +73,42 @@ func TestSimulationLog(t *testing.T) {
 	validateOk(t, rr, "text/plain")
 }
 
+func TestSimulationLogRejectsInvalidTaskId(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := someGetRequest(t, "/task/console/whatever")
+	mux.SetURLVars(req, map[string]string{"taskId": "../../../../etc/passwd"})
+
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager()).SimulationLogHandler)
+	handler.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %d", rr.Code)
+}
+
+func TestSimulationLogMissingResultsDir(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := someGetRequest(t, "/task/console/some-task-id")
+
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager()).SimulationLogHandler)
+	router := mux.NewRouter()
+	router.HandleFunc("/task/console/{taskId}", handler)
+	router.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusNotFound, "unexpected status code %d", rr.Code)
+}
+
+func TestSimulationLogMissingFile(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := someGetRequest(t, "/task/console/some-task-id")
+
+	workspaceOps := someWorkspace()
+	_, err := workspaceOps.NewUserFilesDir("some-task-id")
+	test.Assertf(t, err == nil, "unable to create user files dir")
+
+	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager()).SimulationLogHandler)
+	router := mux.NewRouter()
+	router.HandleFunc("/task/console/{taskId}", handler)
+	router.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusNotFound, "unexpected status code %d", rr.Code)
+}
+
 func TestGetResults(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := someGetRequest(t, "/task/results/some-task-id")
@@ -127,6 +164,60 @@ func TestAbortUnknownTask(t *testing.T) {
 	creteSomeUsersFilesDir(t, workspaceOps, "some-task-id")
 	router.ServeHTTP(rr, req)
 	test.Assertf(t, rr.Code == http.StatusNotFound, "expecting 400 but got %d", rr.Code)
+}
+
+func TestTaskContextHandler(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := someGetRequest(t, "/task/some-task-id")
+
+	taskManager := someTaskManager()
+	taskManager.TaskContexts["some-task-id"] = &taskmanager.TaskRuntimeContext{
+		Task: &gatling.Task{Id: "some-task-id"}, Status: taskmanager.TaskStarted}
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), taskManager).TaskContextHandler)
+	router := mux.NewRouter()
+	router.HandleFunc("/task/{taskId}", handler)
+	router.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusOK, "unexpected status code %d", rr.Code)
+
+	var snapshot taskmanager.TaskRuntimeContext
+	err := json.Unmarshal(rr.Body.Bytes(), &snapshot)
+	test.Assertf(t, err == nil, "unable to unmarshal response : %v", err)
+	test.Assertf(t, snapshot.Status == taskmanager.TaskStarted, "unexpected status %v", snapshot.Status)
+}
+
+func TestTaskContextHandlerRejectsInvalidTaskId(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := someGetRequest(t, "/task/whatever")
+	mux.SetURLVars(req, map[string]string{"taskId": "../../../../etc/passwd"})
+
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager()).TaskContextHandler)
+	handler.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %d", rr.Code)
+}
+
+func TestTaskContextHandlerUnknownTask(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := someGetRequest(t, "/task/some-task-id")
+
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager()).TaskContextHandler)
+	router := mux.NewRouter()
+	router.HandleFunc("/task/{taskId}", handler)
+	router.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusNotFound, "unexpected status code %d", rr.Code)
+}
+
+func TestAbortTaskHandlerReturnsInternalServerErrorWhenAbortFails(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := somePostRequest(t, "/task/abort/some-task-id")
+
+	taskManager := someTaskManager()
+	taskManager.TaskContexts["some-task-id"] = &taskmanager.TaskRuntimeContext{
+		Task: &gatling.Task{Id: "some-task-id"}, Status: taskmanager.TaskCompleted}
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), taskManager).AbortTaskHandler)
+	router := mux.NewRouter()
+	router.HandleFunc("/task/abort/{taskId}", handler)
+	router.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusInternalServerError, "unexpected status code %d", rr.Code)
 }
 
 func someProcess() *os.Process {

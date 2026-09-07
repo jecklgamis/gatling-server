@@ -10,10 +10,6 @@ func methodNotAllowed(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func badRequest(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusBadRequest)
-}
-
 func badRequestWithJson(w http.ResponseWriter, entity map[string]interface{}) {
 	w.WriteHeader(http.StatusBadRequest)
 	err := json.NewEncoder(w).Encode(entity)

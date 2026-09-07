@@ -42,6 +42,19 @@ func TestFileUploadWithNoFileAttachment(t *testing.T) {
 	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %d", rr.Code)
 }
 
+func TestFileUploadRateLimitedAfterTooManyFailedAuthAttempts(t *testing.T) {
+	uploadDir, _ := ioutil.TempDir("", "uploads")
+	handler := http.HandlerFunc(NewFileUploadHandler(uploadDir, someApiToken).Handle)
+	for i := 0; i < authMaxFailures; i++ {
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, createFileUploadHttpRequestTo(t, "testdata/some.txt", "wrong-token"))
+		test.Assertf(t, rr.Code == http.StatusUnauthorized, "unexpected status code %d on attempt %d", rr.Code, i)
+	}
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, createFileUploadHttpRequestTo(t, "testdata/some.txt", "wrong-token"))
+	test.Assertf(t, rr.Code == http.StatusTooManyRequests, "unexpected status code %d", rr.Code)
+}
+
 func TestFileUploadDirMustBeAbsolute(t *testing.T) {
 	handler := NewFileUploadHandler(".", someApiToken)
 	test.Assertf(t, handler == nil, "expecting nil handler")
