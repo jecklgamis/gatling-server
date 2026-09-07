@@ -6,11 +6,11 @@ APP_DIR=${SCRIPT_DIR}/../..
 function check_binaries() {
   if ! command -v go &>/dev/null; then
     echo "go binary not found!"
-    exit -1
+    exit 1
   fi
   if ! command -v fswatch &>/dev/null; then
     echo "fswatch binary not found!"
-    exit -1
+    exit 1
   fi
 }
 
@@ -22,4 +22,4 @@ trap 'sigint_handler' SIGINT
 
 check_binaries
 ${SCRIPT_DIR}/test-app.sh && ${SCRIPT_DIR}/build-app.sh && ${SCRIPT_DIR}/kill-app.sh && ${SCRIPT_DIR}/run-app.sh
-fswatch -o ${APP_DIR}/pkg -o ${APP_DIR}/cmd -o ${APP_DIR}/internal | xargs -n1 -I{} sh -c "${SCRIPT_DIR}/test-app.sh && ${SCRIPT_DIR}/build-app.sh && ${SCRIPT_DIR}/kill-app.sh && ${SCRIPT_DIR}/run-app.sh"
+fswatch -o ${APP_DIR}/pkg -o ${APP_DIR}/cmd -o ${APP_DIR}/configs | xargs -n1 -I{} sh -c "${SCRIPT_DIR}/test-app.sh && ${SCRIPT_DIR}/build-app.sh && ${SCRIPT_DIR}/kill-app.sh && ${SCRIPT_DIR}/run-app.sh"

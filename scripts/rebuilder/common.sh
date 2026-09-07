@@ -6,5 +6,5 @@ function is_running_on_mac() {
 }
 
 function speak() {
-  is_running_on_mac && say $1
+  is_running_on_mac && say "$1"
 }
