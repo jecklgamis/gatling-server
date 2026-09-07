@@ -50,7 +50,7 @@ func TestSubmitJarSimulation(t *testing.T) {
 		"simulation": "gatling.test.example.simulation.ExampleSimulation",
 		"javaOpts":   "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1",
 	}
-	uploadUrl := fmt.Sprintf("%s/task/upload/http", baseUrl)
+	uploadUrl := fmt.Sprintf("%s/task/upload", baseUrl)
 	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-scala-example-lean.jar", kv,
 		map[string]string{"Authorization": "Bearer " + testApiToken})
 	test.Assertf(t, err == nil, "unable to upload : %v", err)
@@ -73,7 +73,7 @@ func TestAbortTask(t *testing.T) {
 		"simulation": "gatling.test.example.simulation.ExampleSimulation",
 		"javaOpts":   "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPersecond=1",
 	}
-	uploadUrl := fmt.Sprintf("%s/task/upload/http", baseUrl)
+	uploadUrl := fmt.Sprintf("%s/task/upload", baseUrl)
 	resp, err := uploader.UploadFile(uploadUrl, "testdata/gatling-scala-example-lean.jar", kv,
 		map[string]string{"Authorization": "Bearer " + testApiToken})
 	test.Assertf(t, err == nil, "unable to upload : %v", err)

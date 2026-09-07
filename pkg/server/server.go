@@ -68,7 +68,7 @@ func Start() {
 	slog.Info("Using upload dir", "dir", uploadDir)
 	apiToken := env.GetOrElse("API_TOKEN", "default")
 	httpUploadHandler := handler.NewHttpUploadHandler(workspace, taskManager, uploadDir, apiToken)
-	router.HandleFunc("/task/upload/http", httpUploadHandler.Handle)
+	router.HandleFunc("/task/upload", httpUploadHandler.Handle)
 
 	fileUploadHandler := handler.NewFileUploadHandler(uploadDir, apiToken)
 	router.HandleFunc("/upload", fileUploadHandler.Handle)

@@ -22,7 +22,7 @@ An API server for running [Gatling](https://gatling.io/) OSS load test simulatio
 | `/buildInfo`                       | GET    | —      | —                                                            | Version/branch info                                                |
 | `/probe/ready`                     | GET    | —      | —                                                            | Readiness probe                                                    |
 | `/probe/live`                      | GET    | —      | —                                                            | Liveness probe                                                     |
-| `/task/upload/http`                | POST   | Bearer | multipart: `file`, `simulation`, `javaOpts`                   | Upload a jar and submit + run it in one call                       |
+| `/task/upload`                     | POST   | Bearer | multipart: `file`, `simulation`, `javaOpts`                   | Upload a jar and submit + run it in one call                       |
 | `/upload`                          | POST   | Bearer | multipart: `file`                                            | Upload any file; returns `{"id": "<uuid>"}`                        |
 | `/uploads/{id}/{filename}`         | GET    | —      | —                                                            | Download/browse an uploaded file                                   |
 | `/task/submit`                     | POST   | Bearer | JSON: `simulation`, `javaOpts`, `url` (http(s) or s3)         | Download the jar from `url` and submit + run it                    |
@@ -84,7 +84,7 @@ curl -v \
   -F "file=@target/gatling-scala-example.jar" \
   -F "simulation=gatling.test.example.simulation.ExampleSimulation" \
   -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPerSecond=10" \
-  http://localhost:58080/task/upload/http
+  http://localhost:58080/task/upload
 ```
 
 The response includes a `taskId`, used to query the server for artifacts such as console logs or Gatling reports.
