@@ -22,6 +22,7 @@ help:
 	@echo make test-all - run all tests
 	@echo make test-coverage - run tests with coverage
 	@echo make clean - delete built artifacts
+	@echo make rebuilder - watch and rebuild/restart the server on change
 dist-quick: clean server-binaries ssl-certs
 dist: test-coverage dist-quick
 up: dist-quick image run
@@ -34,8 +35,7 @@ run-bash:
 login:
 	@docker exec -it `docker ps | grep $(IMAGE_NAME) | awk '{print $$1}'` /bin/bash
 install-deps:
-	@$(CURDIR)/scripts/download-gatling-distribution.sh
-	@go get -u golang.org/x/lint/golint
+	@brew install golangci-lint
 LD_FLAGS:="-X github.com/jecklgamis/gatling-server/pkg/version.BuildVersion=$(BUILD_VERSION) \
 		  -X github.com/jecklgamis/gatling-server/pkg/version.BuildBranch=$(BUILD_BRANCH)"
 
@@ -72,9 +72,5 @@ rebuilder:
 	@$(CURDIR)/scripts/rebuilder/rebuilder.sh
 lint:
 	@$(CURDIR)/scripts/linter.sh
-push:
-	@echo "$(IMAGE_TAG)}"
-	docker image push $(IMAGE_NAME):$(IMAGE_TAG)
-	docker image push $(IMAGE_NAME):latest
 
 
