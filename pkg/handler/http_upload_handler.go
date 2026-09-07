@@ -12,7 +12,7 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
 	"io"
 	"io/ioutil"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -39,7 +39,7 @@ type Metadata struct {
 
 func NewHttpUploadHandler(workspace workspace.Ops, taskManager taskmanager.Ops, uploadDir string, apiToken string) *HttpUploadHandler {
 	if !filepath.IsAbs(uploadDir) {
-		log.Println("Upload dir is not absolute")
+		slog.Error("Upload dir is not absolute")
 		return nil
 	}
 	return &HttpUploadHandler{WorkspaceOps: workspace, TaskOps: taskManager, UploadDir: uploadDir, ApiToken: apiToken, authLimiter: newAuthLimiter()}
@@ -52,26 +52,26 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	clientKey := clientIP(r)
 	if h.authLimiter.blocked(clientKey) {
-		log.Println("Too many failed auth attempts from", clientKey)
+		slog.Warn("Too many failed auth attempts from", "clientKey", clientKey)
 		tooManyRequestsWithError(w, fmt.Errorf("too many failed authentication attempts"))
 		return
 	}
 	if !isAuthorized(r, h.ApiToken) {
 		h.authLimiter.recordFailure(clientKey)
-		log.Println("Missing or invalid API token")
+		slog.Warn("Missing or invalid API token")
 		unauthorizedWithError(w, fmt.Errorf("missing or invalid API token"))
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
-		log.Println("Unable to parse multipart form :", err)
+		slog.Error("Unable to parse multipart form", "error", err)
 		badRequestWithError(w, fmt.Errorf("unable to parse multipart form"))
 		return
 	}
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		log.Println("No file uploaded :", err)
+		slog.Error("No file uploaded", "error", err)
 		badRequestWithError(w, fmt.Errorf("no file uploaded"))
 		return
 	}
@@ -79,30 +79,30 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	filename := filepath.Base(header.Filename)
 	if !hasValidFileExt(filename) {
-		log.Println("Invalid file extension")
+		slog.Warn("Invalid file extension")
 		badRequestWithError(w, fmt.Errorf("invalid file extension"))
 		return
 	}
 	if err := validateFormFields(r); err != nil {
-		log.Println("Missing required fields")
+		slog.Warn("Missing required fields")
 		badRequestWithError(w, err)
 		return
 	}
 	storeDir := filepath.Join(h.UploadDir, uuid.New().String())
 	err = fileioutil.CreateDirIfNotExist(storeDir, 0750)
 	if err != nil {
-		log.Println("Unable to create dir :", err)
+		slog.Error("Unable to create dir", "error", err)
 		internalServerError(w)
 		return
 	}
 	defer func() {
 		if err := os.RemoveAll(storeDir); err != nil {
-			log.Println("Unable to remove temporary upload dir :", err)
+			slog.Error("Unable to remove temporary upload dir", "error", err)
 		}
 	}()
 	storePath := filepath.Join(storeDir, filename)
 	if err := streamToFile(file, storePath); err != nil {
-		log.Println("Unable to store file :", err)
+		slog.Error("Unable to store file", "error", err)
 		internalServerError(w)
 		return
 	}
@@ -110,7 +110,7 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	taskPath := filepath.Join(h.WorkspaceOps.BaseDir(), taskId)
 	userFilesDir, err := workspace.NewUserFilesDir(taskPath)
 	if err != nil {
-		log.Println("Unable to create user files dir :", err)
+		slog.Error("Unable to create user files dir", "error", err)
 		internalServerError(w)
 		return
 	}
@@ -118,7 +118,7 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if !taskCommitted {
 			if err := os.RemoveAll(taskPath); err != nil {
-				log.Println("Unable to remove task dir after failed upload :", err)
+				slog.Error("Unable to remove task dir after failed upload", "error", err)
 			}
 		}
 	}()
@@ -130,7 +130,7 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	destPath := filepath.Join(userFilesDir.Simulations, filename)
 	err = fileioutil.CopyFile(storePath, destPath)
 	if err != nil {
-		log.Println("Unable to copy uploaded file to user files dir : ", err)
+		slog.Error("Unable to copy uploaded file to user files dir", "error", err)
 		internalServerError(w)
 		return
 	}
@@ -138,13 +138,13 @@ func (h *HttpUploadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	metadata := &Metadata{TaskId: taskId, Simulation: simulation, JavaOpts: javaOpts}
 	err = writeMetadata(userFilesDir.BaseDir, metadata, "metadata.json")
 	if err != nil {
-		log.Println("Unable write metadata file :", err)
+		slog.Error("Unable write metadata file", "error", err)
 		internalServerError(w)
 		return
 	}
 	_, err = h.TaskOps.SubmitTask(task)
 	if err != nil {
-		log.Println("Unable to submit task :", err)
+		slog.Error("Unable to submit task", "error", err)
 		internalServerError(w)
 		return
 	}
@@ -156,10 +156,10 @@ func writeMetadata(dir string, metadata *Metadata, filename string) error {
 	path := filepath.Join(dir, filename)
 	err := ioutil.WriteFile(path, []byte(jsonutil.ToJson(metadata)), 0640)
 	if err != nil {
-		log.Println("Failed writing", path)
+		slog.Error("Failed writing", "path", path, "error", err)
 		return err
 	}
-	log.Println("Wrote", path)
+	slog.Info("Wrote", "path", path)
 	return nil
 }
 

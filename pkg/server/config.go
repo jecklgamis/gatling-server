@@ -2,7 +2,8 @@ package server
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
+	"os"
 	"time"
 )
 import "github.com/spf13/viper"
@@ -59,18 +60,20 @@ type Config struct {
 
 func ReadConfig(env string) *Config {
 	configFile := fmt.Sprintf("config-%s.yaml", env)
-	log.Printf("Loading %s\n", configFile)
+	slog.Info("Loading config", "file", configFile)
 	viper.SetConfigName(configFile)
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("configs")
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Panic("Unable to read config file", err)
+		slog.Error("Unable to read config file", "error", err)
+		panic(err)
 	}
 	config := &Config{}
 	err = viper.Unmarshal(config)
 	if err != nil {
-		log.Fatalf("Unable to umarshall config file: %s\n", err)
+		slog.Error("Unable to unmarshal config file", "error", err)
+		os.Exit(1)
 	}
 	return config
 }

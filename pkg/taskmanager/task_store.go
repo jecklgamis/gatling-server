@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/jecklgamis/gatling-server/pkg/jsonutil"
 	"io/ioutil"
-	"log"
+	"log/slog"
 	"path/filepath"
 )
 
@@ -24,7 +24,7 @@ func NewFileTaskStore(baseDir string) *FileTaskStore {
 func (s *FileTaskStore) Store(context *TaskRuntimeContext) error {
 	path := filepath.Join(s.baseDir, fmt.Sprintf("%s-context.json", context.Task.Id))
 	err := ioutil.WriteFile(path, []byte(jsonutil.ToJson(context)), 0744)
-	log.Println("Wrote", path)
+	slog.Info("Wrote", "path", path)
 	if err != nil {
 		return err
 	}

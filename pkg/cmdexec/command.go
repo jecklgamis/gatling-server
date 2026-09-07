@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"sync"
@@ -30,7 +30,7 @@ type CommandExecutionOps interface {
 func (c *CommandExecutor) ExecuteAndLog(cmd *exec.Cmd, filename string, taskId string) error {
 	f, err := os.Create(filename)
 	if err != nil {
-		log.Println("Unable to open file for writing :", err)
+		slog.Error("Unable to open file for writing", "error", err)
 		return err
 	}
 	stdout, err := cmd.StdoutPipe()

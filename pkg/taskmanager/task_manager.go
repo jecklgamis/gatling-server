@@ -8,7 +8,7 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/gatling"
 	"github.com/jecklgamis/gatling-server/pkg/tarutil"
 	"github.com/jecklgamis/gatling-server/pkg/uploader"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"sync"
@@ -157,7 +157,7 @@ func (t *TaskManager) AbortTask(taskId string) error {
 		if err != nil {
 			return err
 		}
-		log.Println("Triggered abort on task", taskId)
+		slog.Info("Triggered abort on task", "taskId", taskId)
 		return nil
 	} else {
 		return fmt.Errorf("task process is not set")
@@ -165,7 +165,7 @@ func (t *TaskManager) AbortTask(taskId string) error {
 }
 
 func (t *TaskManager) worker(context *TaskRuntimeContext, task *gatling.Task, result chan<- *gatling.Result) {
-	log.Printf("Gatling task %v started", task.Id)
+	slog.Info("Gatling task started", "taskId", task.Id)
 	t.EventChannel <- event.NewTaskStartedEvent(task.Id)
 	defer func() {
 		tarutil.CompressDir(task.UserFilesDir.Results, task.UserFilesDir.BaseDir, "results.tar.gz")
@@ -176,21 +176,21 @@ func (t *TaskManager) worker(context *TaskRuntimeContext, task *gatling.Task, re
 	context.markStarted()
 	cmd, err := t.Gatling.RunSimulation(cmdexec.NewCommandExecutor(), task)
 	if err != nil {
-		log.Println("Failed executing command :", err)
+		slog.Error("Failed executing command", "error", err)
 		context.markCompleted(false)
 		result <- &gatling.Result{Ok: false}
 		return
 	}
 	context.setProcess(cmd.Process)
-	log.Println("Waiting for task", task.Id, "to complete")
+	slog.Info("Waiting for task to complete", "taskId", task.Id)
 	var timedOut int32
 	var timer *time.Timer
 	if t.TaskTimeout > 0 {
 		timer = time.AfterFunc(t.TaskTimeout, func() {
 			atomic.StoreInt32(&timedOut, 1)
-			log.Println("Task", task.Id, "exceeded timeout of", t.TaskTimeout, "- killing process")
+			slog.Warn("Task exceeded timeout, killing process", "taskId", task.Id, "timeout", t.TaskTimeout)
 			if err := cmd.Process.Kill(); err != nil {
-				log.Println("Unable to kill timed-out task", task.Id, ":", err)
+				slog.Error("Unable to kill timed-out task", "taskId", task.Id, "error", err)
 			}
 		})
 	}
@@ -199,9 +199,9 @@ func (t *TaskManager) worker(context *TaskRuntimeContext, task *gatling.Task, re
 		timer.Stop()
 	}
 	if err != nil {
-		log.Println("Failed executing command :", err)
+		slog.Error("Failed executing command", "error", err)
 		if atomic.LoadInt32(&timedOut) == 1 {
-			log.Println("Task", task.Id, "was killed after exceeding timeout of", t.TaskTimeout)
+			slog.Warn("Task was killed after exceeding timeout", "taskId", task.Id, "timeout", t.TaskTimeout)
 			context.markAborted()
 			result <- &gatling.Result{Ok: false}
 			t.EventChannel <- event.NewTaskAbortedEvent(task.Id)

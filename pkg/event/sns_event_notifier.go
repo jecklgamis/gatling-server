@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
 	"github.com/jecklgamis/gatling-server/pkg/jsonutil"
-	"log"
+	"log/slog"
 )
 
 type SNSEventNotifier struct {
@@ -16,7 +16,7 @@ type SNSEventNotifier struct {
 
 func NewSNSEventNotifier(sns snsiface.SNSAPI, configMap map[string]string) *SNSEventNotifier {
 	if _, ok := configMap["topicArn"]; !ok {
-		log.Println("no topicArn found in config map")
+		slog.Warn("no topicArn found in config map")
 		return nil
 	}
 	return &SNSEventNotifier{ConfigMap: configMap, sns: sns}
@@ -29,7 +29,7 @@ func (h *SNSEventNotifier) Event(event interface{}) {
 func CreateSNS(region string) *sns.SNS {
 	sess, err := session.NewSession(&aws.Config{Region: aws.String(region)})
 	if err != nil {
-		log.Println("Failed creating AWS session", err)
+		slog.Error("Failed creating AWS session", "error", err)
 		return nil
 	}
 	return sns.New(sess)
@@ -43,9 +43,9 @@ func (h *SNSEventNotifier) notify(event interface{}) error {
 	}
 	_, err := client.Publish(input)
 	if err != nil {
-		log.Println("Failed sending SNS message : ", err)
+		slog.Error("Failed sending SNS message", "error", err)
 		return err
 	}
-	log.Println("Sent SNS message", jsonutil.ToJson(event))
+	slog.Info("Sent SNS message", "event", jsonutil.ToJson(event))
 	return nil
 }

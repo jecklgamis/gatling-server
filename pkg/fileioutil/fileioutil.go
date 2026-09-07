@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -31,7 +31,7 @@ func WriteBufferToFile(buffer *bytes.Buffer, dir string, filename string) (*stri
 	if err != nil {
 		return nil, err
 	}
-	log.Println("Wrote", storePath)
+	slog.Info("Wrote", "storePath", storePath)
 	return &storePath, nil
 }
 
@@ -42,7 +42,7 @@ func CreateDirIfNotExist(path string, perm os.FileMode) error {
 	if err := os.MkdirAll(path, perm); err != nil {
 		return err
 	}
-	log.Println("Created", path)
+	slog.Info("Created", "path", path)
 	return nil
 }
 

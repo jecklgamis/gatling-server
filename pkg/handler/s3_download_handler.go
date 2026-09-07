@@ -11,7 +11,7 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
 	"io"
 	"io/ioutil"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -38,13 +38,13 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	clientKey := clientIP(r)
 	if h.authLimiter.blocked(clientKey) {
-		log.Println("Too many failed auth attempts from", clientKey)
+		slog.Warn("Too many failed auth attempts from", "clientKey", clientKey)
 		tooManyRequestsWithError(w, fmt.Errorf("too many failed authentication attempts"))
 		return
 	}
 	if !isAuthorized(r, h.ApiToken) {
 		h.authLimiter.recordFailure(clientKey)
-		log.Println("Missing or invalid API token")
+		slog.Warn("Missing or invalid API token")
 		unauthorizedWithError(w, fmt.Errorf("missing or invalid API token"))
 		return
 	}
@@ -54,7 +54,7 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, maxS3DownloadRequestSize+1))
 	if err != nil {
-		log.Println("Unable to read request body :", err)
+		slog.Error("Unable to read request body", "error", err)
 		internalServerError(w)
 		return
 	}
@@ -64,12 +64,12 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	request := api.S3DownloadTaskRequest{}
 	if err := json.Unmarshal(body, &request); err != nil {
-		log.Println("Unable to marshall request body :", err)
+		slog.Error("Unable to marshall request body", "error", err)
 		badRequestWithError(w, fmt.Errorf("unable to marshall request body"))
 		return
 	}
 	if err := validateRequest(&request); err != nil {
-		log.Println("Invalid request :", err)
+		slog.Error("Invalid request", "error", err)
 		badRequestWithError(w, err)
 		return
 	}
@@ -77,7 +77,7 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	taskPath := filepath.Join(h.WorkspaceOps.BaseDir(), taskId)
 	userFilesDir, err := workspace.NewUserFilesDir(taskPath)
 	if err != nil {
-		log.Println("Unable to create user files directory :", err)
+		slog.Error("Unable to create user files directory", "error", err)
 		internalServerError(w)
 		return
 	}
@@ -85,7 +85,7 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if !taskCommitted {
 			if err := os.RemoveAll(taskPath); err != nil {
-				log.Println("Unable to remove task dir after failed download :", err)
+				slog.Error("Unable to remove task dir after failed download", "error", err)
 			}
 		}
 	}()
@@ -96,7 +96,7 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	storePath, err := h.s3Ops.DownloadUrl(request.Url, userFilesDir.BaseDir)
 	if err != nil {
-		log.Println("Unable to download file:", err)
+		slog.Error("Unable to download file", "error", err)
 		internalServerError(w)
 		return
 	}
@@ -107,23 +107,23 @@ func (h *S3DownloadHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	task := gatling.NewTask(taskId, request.Simulation, request.JavaOpts, userFilesDir)
 	task.FileType = "jar"
-	log.Println("Submitting simulation", filename)
+	slog.Info("Submitting simulation", "filename", filename)
 	destPath := filepath.Join(userFilesDir.Simulations, filename)
 	err = fileioutil.CopyFile(*storePath, destPath)
 	if err != nil {
-		log.Println("Unable to copy downloaded file to user files dir :", err)
+		slog.Error("Unable to copy downloaded file to user files dir", "error", err)
 		internalServerError(w)
 		return
 	}
 	metadata := &Metadata{TaskId: taskId, Simulation: request.Simulation, JavaOpts: request.JavaOpts}
 	if err := writeMetadata(userFilesDir.BaseDir, metadata, "metadata.json"); err != nil {
-		log.Println("Unable write metadata file :", err)
+		slog.Error("Unable write metadata file", "error", err)
 		internalServerError(w)
 		return
 	}
 	_, err = h.TaskOps.SubmitTask(task)
 	if err != nil {
-		log.Println("Unable to submit task", err)
+		slog.Error("Unable to submit task", "error", err)
 		internalServerError(w)
 		return
 	}

@@ -3,7 +3,7 @@ package workspace
 import (
 	server "github.com/jecklgamis/gatling-server/pkg/fileioutil"
 	"io/ioutil"
-	"log"
+	"log/slog"
 	"path/filepath"
 )
 
@@ -21,7 +21,7 @@ func NewWorkspace(baseDir string) *Workspace {
 	if err := server.CreateDirIfNotExist(baseDir, 0744); err != nil {
 		panic(err)
 	}
-	log.Println("Created workspace", baseDir)
+	slog.Info("Created workspace", "baseDir", baseDir)
 	return &Workspace{baseDir: baseDir}
 }
 

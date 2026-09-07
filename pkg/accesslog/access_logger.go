@@ -1,8 +1,7 @@
 package accesslog
 
 import (
-	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 )
 
@@ -24,11 +23,12 @@ func AccessLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lrw := NewLoggingResponseWriter(w)
 		next.ServeHTTP(lrw, r)
-		accessLog := map[string]interface{}{"host": r.Host,
-			"method": r.Method, "uri_path": r.RequestURI, "protocol": r.Proto,
-			"status": lrw.status,
-		}
-		bytes, _ := json.Marshal(accessLog)
-		log.Println(string(bytes))
+		slog.Info("access",
+			"host", r.Host,
+			"method", r.Method,
+			"uri_path", r.RequestURI,
+			"protocol", r.Proto,
+			"status", lrw.status,
+		)
 	})
 }

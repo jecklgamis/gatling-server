@@ -2,7 +2,7 @@ package heartbeat
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -26,7 +26,7 @@ func New(frequency time.Duration, callback func()) (*HeartBeat, error) {
 		for {
 			select {
 			case <-heartbeat.done:
-				log.Println("Heartbeat stopped")
+				slog.Info("Heartbeat stopped")
 				return
 			case <-heartbeat.ticker.C:
 				go safeCall(callback)
@@ -41,7 +41,7 @@ func New(frequency time.Duration, callback func()) (*HeartBeat, error) {
 func safeCall(callback func()) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("Heartbeat callback panicked :", r)
+			slog.Error("Heartbeat callback panicked", "r", r)
 		}
 	}()
 	callback()

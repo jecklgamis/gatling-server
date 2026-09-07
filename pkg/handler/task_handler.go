@@ -7,7 +7,7 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/taskmanager"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
 	"io/ioutil"
-	"log"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"regexp"
@@ -73,7 +73,7 @@ func (h *TaskHandler) AbortTaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err := h.TaskOps.AbortTask(taskId)
 	if err != nil {
-		log.Println("Unable to abort task :", err)
+		slog.Error("Unable to abort task", "error", err)
 		internalServerError(w)
 		return
 	}

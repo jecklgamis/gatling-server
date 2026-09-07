@@ -3,7 +3,7 @@ package uploader
 import (
 	"bytes"
 	"io"
-	"log"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -21,7 +21,7 @@ func UploadFile(uploadUrl string, filename string, kv map[string]string, headers
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Uploaded %s to %s\n", filename, uploadUrl)
+	slog.Info("Uploaded", "filename", filename, "uploadUrl", uploadUrl)
 	return resp, nil
 }
 
@@ -31,37 +31,37 @@ func CreateMultipartRequest(uploadURL string, filename string, kv map[string]str
 	if filename != "" {
 		file, err := os.Open(filename)
 		if err != nil {
-			log.Println("Unable to open file", filename)
+			slog.Error("Unable to open file", "filename", filename, "error", err)
 			return nil, err
 		}
 		defer file.Close()
 		part, err := writer.CreateFormFile("file", filepath.Base(file.Name()))
 		if err != nil {
-			log.Println("Unable to create form", err)
+			slog.Error("Unable to create form", "error", err)
 			return nil, err
 		}
 		_, err = io.Copy(part, file)
 		if err != nil {
-			log.Println("Unable to copy file", err)
+			slog.Error("Unable to copy file", "error", err)
 			return nil, err
 		}
 	}
 	for k, v := range kv {
 		part, err := writer.CreateFormField(k)
 		if err != nil {
-			log.Println("Unable to create form field", k, err)
+			slog.Error("Unable to create form field", "field", k, "error", err)
 			return nil, err
 		}
 		_, err = io.Copy(part, strings.NewReader(v))
 		if err != nil {
-			log.Println("Unable to set field", k, err)
+			slog.Error("Unable to set field", "field", k, "error", err)
 			return nil, err
 		}
 	}
 	writer.Close()
 	request, err := http.NewRequest("POST", uploadURL, body)
 	if err != nil {
-		log.Println("Unable to create request", err)
+		slog.Error("Unable to create request", "error", err)
 		return nil, err
 	}
 	request.Header.Add("Content-Type", writer.FormDataContentType())

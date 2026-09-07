@@ -14,18 +14,18 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/uploader"
 	"github.com/jecklgamis/gatling-server/pkg/version"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
-	"log"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"time"
 )
 
 func printRoutes(router *mux.Router) {
-	log.Println("Available endpoints:")
+	slog.Info("Available endpoints:")
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		template, err := route.GetPathTemplate()
 		if err == nil {
-			log.Println(template)
+			slog.Info(template)
 		}
 		return nil
 	})
@@ -43,7 +43,7 @@ func Start() {
 	eventBus := event.NewEventBus()
 	if config.Heartbeat.Enabled {
 		if _, err := heartbeat.New(config.Heartbeat.Frequency, func() { eventBus.EventC <- event.NewHeartbeatEvent() }); err != nil {
-			log.Println("Unable to start heartbeat :", err)
+			slog.Error("Unable to start heartbeat", "error", err)
 		}
 	}
 	configureEventNotifiers(eventBus, config.EventNotifiers)
@@ -61,7 +61,7 @@ func Start() {
 		panic("unable to create workspace")
 	}
 	uploadDir, _ := filepath.Abs(config.UploadDir)
-	log.Println("Using upload dir", uploadDir)
+	slog.Info("Using upload dir", "dir", uploadDir)
 	apiToken := env.GetOrElse("API_TOKEN", "default")
 	httpUploadHandler := handler.NewHttpUploadHandler(workspace, taskManager, uploadDir, apiToken)
 	router.HandleFunc("/task/upload/http", httpUploadHandler.Handle)
@@ -79,7 +79,7 @@ func Start() {
 			s3DownloadHandler := handler.NewS3DownloadHandler(workspace, taskManager, s3ops, apiToken)
 			router.HandleFunc("/task/download/s3", s3DownloadHandler.Handle)
 		} else {
-			log.Println("S3 downloader missing region config")
+			slog.Warn("S3 downloader missing region config")
 		}
 	}
 
@@ -100,11 +100,11 @@ func Start() {
 	printRoutes(router)
 	router.Use(accesslog.AccessLoggerMiddleware)
 
-	log.Printf("Version: %s\n", version.BuildVersion)
+	slog.Info("Version", "version", version.BuildVersion)
 	if config.Server.Https.KeyFile != "" && config.Server.Https.CertFile != "" {
 		go func() {
 			addr := fmt.Sprintf("0.0.0.0:%d", config.Server.Https.Port)
-			log.Printf("Starting HTTPS server on %s\n", addr)
+			slog.Info("Starting HTTPS server", "addr", addr)
 			srv := &http.Server{
 				Handler:      router,
 				Addr:         addr,
@@ -112,14 +112,14 @@ func Start() {
 				ReadTimeout:  15 * time.Second,
 			}
 			if err := srv.ListenAndServeTLS(config.Server.Https.CertFile, config.Server.Https.KeyFile); err != nil {
-				log.Println("HTTPS server stopped :", err)
+				slog.Error("HTTPS server stopped", "error", err)
 			}
 		}()
 	}
 	if config.Server.Http.Port > 0 {
 		go func() {
 			addr := fmt.Sprintf("0.0.0.0:%d", config.Server.Http.Port)
-			log.Printf("Starting HTTP server on %s\n", addr)
+			slog.Info("Starting HTTP server", "addr", addr)
 			srv := &http.Server{
 				Handler:      router,
 				Addr:         addr,
@@ -127,7 +127,7 @@ func Start() {
 				ReadTimeout:  15 * time.Second,
 			}
 			if err := srv.ListenAndServe(); err != nil {
-				log.Println("HTTP server stopped :", err)
+				slog.Error("HTTP server stopped", "error", err)
 			}
 		}()
 	}
@@ -156,7 +156,7 @@ func configureEventNotifiers(eventBus *event.Bus, configs []EventNotifierConfig)
 				}
 			}
 		default:
-			log.Println("Unsupported event notifier type", config.Type)
+			slog.Warn("Unsupported event notifier type", "type", config.Type)
 		}
 	}
 }
@@ -174,7 +174,7 @@ func configureUploaders(configs []UploaderConfig) []uploader.GatlingArtifactUplo
 				uploaders = append(uploaders, uploader)
 			}
 		default:
-			log.Println("Unsupported uploader type", config.Type)
+			slog.Warn("Unsupported uploader type", "type", config.Type)
 		}
 	}
 	return uploaders

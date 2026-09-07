@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/jecklgamis/gatling-server/pkg/fileioutil"
-	"log"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -36,7 +36,7 @@ type S3Ops interface {
 }
 
 func (s *S3Manager) Upload(bucket string, key string, filename string) error {
-	log.Printf("Uploading %s to %s/%s", filename, bucket, key)
+	slog.Info("Uploading", "filename", filename, "bucket", bucket, "key", key)
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
@@ -44,16 +44,16 @@ func (s *S3Manager) Upload(bucket string, key string, filename string) error {
 	uploader := s3manager.NewUploaderWithClient(s3Client)
 	file, err := os.Open(filename)
 	if err != nil {
-		log.Println("Unable to open file :", err)
+		slog.Error("Unable to open file", "error", err)
 		return err
 	}
 	uploadParams := &s3manager.UploadInput{Bucket: &bucket, Key: &key, Body: file}
 	result, err := uploader.Upload(uploadParams)
 	if err != nil {
-		log.Println("Unable to upload file :", err)
+		slog.Error("Unable to upload file", "error", err)
 		return err
 	}
-	log.Println("Uploaded to", result.Location)
+	slog.Info("Uploaded to", "location", result.Location)
 	return nil
 }
 
@@ -61,7 +61,7 @@ func (s *S3Manager) Download(bucket string, key string, dir string) (*string, er
 	if !fileioutil.DirExists(dir) {
 		return nil, fmt.Errorf("destination dir does not exist")
 	}
-	log.Printf("Downloading %s from %s", key, bucket)
+	slog.Info("Downloading", "key", key, "bucket", bucket)
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		Config:            aws.Config{Region: aws.String(s.region)},
 		SharedConfigState: session.SharedConfigEnable,
@@ -71,7 +71,7 @@ func (s *S3Manager) Download(bucket string, key string, dir string) (*string, er
 	storePath := filepath.Join(dir, filename)
 	file, err := os.Create(storePath)
 	if err != nil {
-		log.Println("Failed to create file : ", err)
+		slog.Error("Failed to create file", "error", err)
 		return nil, err
 	}
 	defer file.Close()
@@ -80,7 +80,7 @@ func (s *S3Manager) Download(bucket string, key string, dir string) (*string, er
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Downloaded to %s (%d bytes)", storePath, numBytes)
+	slog.Info("Downloaded", "storePath", storePath, "bytes", numBytes)
 	return &storePath, nil
 }
 

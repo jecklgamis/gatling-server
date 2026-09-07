@@ -1,6 +1,6 @@
 package event
 
-import "log"
+import "log/slog"
 
 type Listener interface {
 	Event(event interface{})
@@ -34,10 +34,10 @@ func (b *Bus) selectChannelEvents() {
 	for {
 		select {
 		case <-b.StopC:
-			log.Println("Event bus stopped")
+			slog.Info("Event bus stopped")
 			return
 		case e := <-b.EventC:
-			log.Println("Event published", e)
+			slog.Info("Event published", "e", e)
 			b.NumEvents++
 			b.handleEvent(e)
 
@@ -52,7 +52,7 @@ func (b *Bus) handleEvent(event interface{}) {
 			go l.Event(e)
 		}
 	default:
-		log.Println("Unknown event", e)
+		slog.Warn("Unknown event", "e", e)
 	}
 }
 

@@ -3,7 +3,7 @@ package workspace
 import (
 	"fmt"
 	util "github.com/jecklgamis/gatling-server/pkg/fileioutil"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -18,12 +18,12 @@ type UserFilesDir struct {
 func NewUserFilesDir(baseDir string) (*UserFilesDir, error) {
 	if util.DirExists(baseDir) {
 		err := fmt.Errorf("base dir %s exists already", baseDir)
-		log.Println(err)
+		slog.Error(err.Error())
 		return nil, err
 	}
 	if !filepath.IsAbs(baseDir) {
 		err := fmt.Errorf("base dir %s is not absolute", baseDir)
-		log.Println(err)
+		slog.Error(err.Error())
 		return nil, err
 	}
 	userFilesDir := &UserFilesDir{

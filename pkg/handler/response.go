@@ -2,7 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 )
 
@@ -18,7 +18,7 @@ func badRequestWithJson(w http.ResponseWriter, entity map[string]interface{}) {
 	w.WriteHeader(http.StatusBadRequest)
 	err := json.NewEncoder(w).Encode(entity)
 	if err != nil {
-		log.Println(err)
+		slog.Error("Unable to encode JSON response", "error", err)
 	}
 }
 
@@ -40,7 +40,7 @@ func unauthorizedWithError(w http.ResponseWriter, error error) {
 		"error": error}
 	err := json.NewEncoder(w).Encode(entity)
 	if err != nil {
-		log.Println(err)
+		slog.Error("Unable to encode JSON response", "error", err)
 	}
 }
 
@@ -55,7 +55,7 @@ func tooManyRequestsWithError(w http.ResponseWriter, error error) {
 		"error": error}
 	err := json.NewEncoder(w).Encode(entity)
 	if err != nil {
-		log.Println(err)
+		slog.Error("Unable to encode JSON response", "error", err)
 	}
 }
 
@@ -64,7 +64,7 @@ func okWithJson(w http.ResponseWriter, entity interface{}) {
 	w.WriteHeader(http.StatusOK)
 	err := json.NewEncoder(w).Encode(entity)
 	if err != nil {
-		log.Println(err)
+		slog.Error("Unable to encode JSON response", "error", err)
 	}
 }
 

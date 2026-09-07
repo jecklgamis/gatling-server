@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/jecklgamis/gatling-server/pkg/cmdexec"
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,10 +26,10 @@ type Gatling struct {
 
 func NewGatling(scriptsDir string) *Gatling {
 	if !filepath.IsAbs(scriptsDir) {
-		log.Println("Scripts dir is not absolute", scriptsDir)
+		slog.Error("Scripts dir is not absolute", "scriptsDir", scriptsDir)
 		return nil
 	}
-	log.Println("Using scripts dir", scriptsDir)
+	slog.Info("Using scripts dir", "scriptsDir", scriptsDir)
 	return &Gatling{scriptsDir}
 }
 
@@ -51,7 +51,7 @@ func NewTask(id string, simulation string, javaOpts string, userFilesDir *worksp
 }
 
 func (g *Gatling) RunSimulation(commandOps cmdexec.CommandExecutionOps, task *Task) (*exec.Cmd, error) {
-	log.Println("Running simulations from", task.UserFilesDir.BaseDir)
+	slog.Info("Running simulations from", "baseDir", task.UserFilesDir.BaseDir)
 	userFilesDir := task.UserFilesDir
 	gatlingSh := fmt.Sprintf("%s/gatling-jar-runner.sh", g.ScriptsDir)
 	cmd := exec.Command(gatlingSh, "-s", task.Simulation,
@@ -59,8 +59,8 @@ func (g *Gatling) RunSimulation(commandOps cmdexec.CommandExecutionOps, task *Ta
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("JAVA_OPTS=%s", task.JavaOpts))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("JAR_FILE=%s/*", userFilesDir.Simulations))
-	log.Println("JAVA_OPTS:", task.JavaOpts)
-	log.Printf("About to execute command [%v]\n", cmd)
+	slog.Info("JAVA_OPTS", "javaOpts", task.JavaOpts)
+	slog.Info("About to execute command", "cmd", cmd)
 	err := commandOps.ExecuteAndLog(cmd, filepath.Join(task.UserFilesDir.BaseDir, "console.log"), task.Id)
 	return cmd, err
 }

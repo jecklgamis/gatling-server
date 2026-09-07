@@ -2,7 +2,7 @@ package waiter
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -24,20 +24,19 @@ func WaitUntil(retryDelay time.Duration, retries int, callback func(counter int)
 }
 
 func WaitUntilHTTPGetOk(url string, delay time.Duration, retries int) error {
-	log.Printf("Waiting until GET %s is OK (delay=%s, retries=%d)\n",
-		url, delay.String(), retries)
+	slog.Info("Waiting until GET is OK", "url", url, "delay", delay.String(), "retries", retries)
 	err := WaitUntil(delay, retries, func(counter int) bool {
 		resp, err := http.Get(url)
 		if err != nil {
 			return false
 		}
 		if resp.StatusCode == http.StatusOK {
-			log.Println("OK", url)
+			slog.Info("OK", "url", url)
 		}
 		return resp.StatusCode == http.StatusOK
 	})
 	if err != nil {
-		log.Println("!OK", url)
+		slog.Info("!OK", "url", url)
 	}
 	return err
 }

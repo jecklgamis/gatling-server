@@ -5,7 +5,7 @@ import (
 	"github.com/google/uuid"
 	test "github.com/jecklgamis/gatling-server/pkg/testing"
 	"io/ioutil"
-	"log"
+	"log/slog"
 	"path/filepath"
 	"testing"
 )
@@ -71,7 +71,7 @@ func TestMustReadFile(t *testing.T) {
 	var panicCaught = false
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("panic!")
+			slog.Info("panic!")
 			panicCaught = true
 		}
 		test.Assertf(t, panicCaught, "expecting panic")

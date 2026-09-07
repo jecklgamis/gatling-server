@@ -11,7 +11,7 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/waiter"
 	"github.com/spf13/viper"
 	"io/ioutil"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -85,7 +85,7 @@ func TestAbortTask(t *testing.T) {
 
 	time.Sleep(3 * time.Second)
 	abortUrl := fmt.Sprintf("%s/task/abort/%s", baseUrl, entity.TaskId)
-	log.Println(abortUrl)
+	slog.Info("abort", "url", abortUrl)
 	resp, err = http.Post(abortUrl, "*/*", strings.NewReader(""))
 	test.Assertf(t, err == nil, "unable to abort task :%v", err)
 	test.Assertf(t, resp.StatusCode == http.StatusOK, "expecting 200 but got %v", resp.StatusCode)
