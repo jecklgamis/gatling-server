@@ -47,7 +47,7 @@ func (c *CommandExecutor) ExecuteAndLog(cmd *exec.Cmd, filename string, taskId s
 		_ = f.Close()
 		return err
 	}
-	fileWriter := newPrefixWriter(newLimitedWriter(f, maxLogFileSize), taskId)
+	fileWriter := newLimitedWriter(f, maxLogFileSize)
 	stdoutWriter := newPrefixWriter(os.Stdout, taskId)
 	writer := io.MultiWriter(fileWriter, stdoutWriter)
 	var wg sync.WaitGroup
