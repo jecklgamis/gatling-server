@@ -71,10 +71,19 @@ func Start() {
 	httpUploadHandler := handler.NewHttpUploadHandler(workspace, taskManager, uploadDir, apiToken)
 	router.HandleFunc("/task/upload", httpUploadHandler.Handle)
 
+	browseUser := config.BrowseAuth.Username
+	if browseUser == "" {
+		browseUser = "default"
+	}
+	browsePass := config.BrowseAuth.Password
+	if browsePass == "" {
+		browsePass = "default"
+	}
+
 	fileUploadHandler := handler.NewFileUploadHandler(uploadDir, apiToken)
 	router.HandleFunc("/upload", fileUploadHandler.Handle)
 	uploadsFileServer := handler.ForceDownloadHeaders(http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
-	router.PathPrefix("/uploads/").Handler(uploadsFileServer)
+	router.PathPrefix("/uploads/").Handler(handler.RequireBasicAuth(uploadsFileServer, browseUser, browsePass))
 
 	var s3ops s3.S3Ops
 	var allowedS3Buckets []string
@@ -95,7 +104,8 @@ func Start() {
 		}
 	}
 
-	apiHandler := handler.NewApiHandler(workspace, taskManager, s3ops, apiToken, config.TaskSubmit.AllowedHttpHosts, allowedS3Buckets)
+	apiHandler := handler.NewApiHandler(workspace, taskManager, s3ops, apiToken, config.TaskSubmit.AllowedHttpHosts,
+		allowedS3Buckets, browseUser, browsePass)
 	router.HandleFunc("/task/submit", apiHandler.Handle)
 	taskHandler := handler.NewTaskHandler(workspace, taskManager, apiToken)
 	router.HandleFunc("/task/{taskId}", taskHandler.TaskContextHandler)
@@ -107,7 +117,7 @@ func Start() {
 	router.HandleFunc("/blackhole", handler.BlackholeHandler)
 
 	fs := http.FileServer(http.Dir(workspace.BaseDir() + "/"))
-	router.PathPrefix("/workspace/").Handler(handler.RequireAuth(http.StripPrefix("/workspace/", fs), apiToken))
+	router.PathPrefix("/workspace/").Handler(handler.RequireBasicAuth(http.StripPrefix("/workspace/", fs), browseUser, browsePass))
 	router.HandleFunc("/", handler.RootHandler)
 	printRoutes(router)
 	router.Use(accesslog.AccessLoggerMiddleware)

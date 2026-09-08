@@ -40,3 +40,47 @@ func TestRequireAuthRateLimitsAfterTooManyFailures(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	test.Assertf(t, rr.Code == http.StatusTooManyRequests, "unexpected status code %d", rr.Code)
 }
+
+func TestRequireBasicAuthAllowsValidCredentials(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	req, _ := http.NewRequest("GET", "/workspace/some-task-id/console.log", nil)
+	req.SetBasicAuth("default", "default")
+	rr := httptest.NewRecorder()
+	RequireBasicAuth(inner, "default", "default").ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusOK, "unexpected status code %d", rr.Code)
+}
+
+func TestRequireBasicAuthRejectsMissingCredentials(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	req, _ := http.NewRequest("GET", "/workspace/some-task-id/console.log", nil)
+	rr := httptest.NewRecorder()
+	RequireBasicAuth(inner, "default", "default").ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusUnauthorized, "unexpected status code %d", rr.Code)
+	test.Assertf(t, rr.Header().Get("WWW-Authenticate") != "", "expecting WWW-Authenticate challenge header")
+}
+
+func TestRequireBasicAuthRejectsWrongPassword(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	req, _ := http.NewRequest("GET", "/workspace/some-task-id/console.log", nil)
+	req.SetBasicAuth("default", "wrong-password")
+	rr := httptest.NewRecorder()
+	RequireBasicAuth(inner, "default", "default").ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusUnauthorized, "unexpected status code %d", rr.Code)
+}
+
+func TestRequireBasicAuthRateLimitsAfterTooManyFailures(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	handler := RequireBasicAuth(inner, "default", "default")
+	for i := 0; i < authMaxFailures; i++ {
+		req, _ := http.NewRequest("GET", "/workspace/some-task-id/console.log", nil)
+		req.SetBasicAuth("default", "wrong-password")
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		test.Assertf(t, rr.Code == http.StatusUnauthorized, "unexpected status code %d on attempt %d", rr.Code, i)
+	}
+	req, _ := http.NewRequest("GET", "/workspace/some-task-id/console.log", nil)
+	req.SetBasicAuth("default", "wrong-password")
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusTooManyRequests, "unexpected status code %d", rr.Code)
+}

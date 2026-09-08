@@ -55,6 +55,15 @@ type TaskSubmitConfig struct {
 	AllowedHttpHosts []string
 }
 
+// BrowseAuthConfig holds the HTTP Basic Auth credentials gating the
+// browsable /workspace/ and /uploads/ file listings. Username and Password
+// each default to "default" when left unset, so the endpoints are usable
+// out of the box.
+type BrowseAuthConfig struct {
+	Username string
+	Password string
+}
+
 type Config struct {
 	Server         ListenerConfig
 	ScriptsDir     string
@@ -67,6 +76,7 @@ type Config struct {
 	TaskTimeout    time.Duration
 	LogLevel       string
 	TaskSubmit     TaskSubmitConfig
+	BrowseAuth     BrowseAuthConfig
 }
 
 // ParseLogLevel maps a config log level string (debug/info/warn/error, case

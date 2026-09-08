@@ -12,6 +12,12 @@ scriptsDir: scripts
 workspaceDir: workspace
 uploadDir: uploads
 
+# Credentials gating the browsable /workspace/ and /uploads/ file listings
+# (HTTP Basic Auth). Both default to "default" if left unset.
+browseAuth:
+  username: default
+  password: default
+
 heartbeat:
   enabled: false
   frequency: 15s

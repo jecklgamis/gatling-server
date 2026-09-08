@@ -46,16 +46,25 @@ type ApiHandler struct {
 	ApiToken         string
 	AllowedHttpHosts []string
 	AllowedS3Buckets []string
-	authLimiter      *authLimiter
+	// BrowseUsername/BrowsePassword are the HTTP Basic Auth credentials
+	// gating /uploads/, attached automatically when downloading from a host
+	// in AllowedHttpHosts (the self-referential "upload then submit against
+	// http://<self>/uploads/..." flow) so that flow keeps working now that
+	// /uploads/ requires auth. Never sent to hosts outside that explicit
+	// allowlist, so this can't leak the credentials to a third party.
+	BrowseUsername string
+	BrowsePassword string
+	authLimiter    *authLimiter
 }
 
 func NewApiHandler(workspaceOps workspace.Ops, taskOps taskmanager.Ops, s3Ops s3.S3Ops, apiToken string,
-	allowedHttpHosts []string, allowedS3Buckets []string) *ApiHandler {
+	allowedHttpHosts []string, allowedS3Buckets []string, browseUsername string, browsePassword string) *ApiHandler {
 	if allowedHttpHosts == nil {
 		allowedHttpHosts = DefaultAllowedHttpHosts
 	}
 	return &ApiHandler{WorkspaceOps: workspaceOps, TaskOps: taskOps, s3Ops: s3Ops, ApiToken: apiToken,
-		AllowedHttpHosts: allowedHttpHosts, AllowedS3Buckets: allowedS3Buckets, authLimiter: newAuthLimiter()}
+		AllowedHttpHosts: allowedHttpHosts, AllowedS3Buckets: allowedS3Buckets,
+		BrowseUsername: browseUsername, BrowsePassword: browsePassword, authLimiter: newAuthLimiter()}
 }
 
 func (h *ApiHandler) Handle(w http.ResponseWriter, r *http.Request) {
@@ -167,10 +176,15 @@ func (h *ApiHandler) download(rawUrl string, dstDir string) (*string, error) {
 		}
 		return h.s3Ops.DownloadUrl(rawUrl, dstDir)
 	case "http", "https":
-		if err := checkHttpHostAllowed(u.Hostname(), h.AllowedHttpHosts); err != nil {
+		explicit, err := checkHttpHostAllowed(u.Hostname(), h.AllowedHttpHosts)
+		if err != nil {
 			return nil, err
 		}
-		return downloadHttpFile(rawUrl, dstDir)
+		basicUser, basicPass := "", ""
+		if explicit {
+			basicUser, basicPass = h.BrowseUsername, h.BrowsePassword
+		}
+		return downloadHttpFile(rawUrl, dstDir, basicUser, basicPass)
 	default:
 		return nil, fmt.Errorf("unsupported url scheme %q", u.Scheme)
 	}
@@ -192,26 +206,31 @@ func isAllowedBucket(bucket string, allowedBuckets []string) bool {
 // pivot the server into fetching internal/cloud-metadata resources. A host
 // explicitly present in allowedHosts is always permitted (this is how the
 // documented "submit a URL pointing back at my own /uploads" flow keeps
-// working); anything else must resolve only to public IP addresses.
-func checkHttpHostAllowed(host string, allowedHosts []string) error {
+// working) and reported back as such via the explicit return value; anything
+// else must resolve only to public IP addresses.
+func checkHttpHostAllowed(host string, allowedHosts []string) (explicit bool, err error) {
 	for _, allowed := range allowedHosts {
 		if strings.EqualFold(allowed, host) {
-			return nil
+			return true, nil
 		}
 	}
 	ips, err := net.LookupIP(host)
 	if err != nil {
-		return fmt.Errorf("unable to resolve host %q: %w", host, err)
+		return false, fmt.Errorf("unable to resolve host %q: %w", host, err)
 	}
 	for _, ip := range ips {
 		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
-			return fmt.Errorf("host %q resolves to a disallowed address %s", host, ip)
+			return false, fmt.Errorf("host %q resolves to a disallowed address %s", host, ip)
 		}
 	}
-	return nil
+	return false, nil
 }
 
-func downloadHttpFile(rawUrl string, dstDir string) (*string, error) {
+// downloadHttpFile fetches rawUrl into dstDir. When basicUser/basicPass are
+// non-empty they're attached as HTTP Basic Auth credentials on the outgoing
+// request - the caller is responsible for only passing them for a trusted,
+// explicitly allow-listed host (see checkHttpHostAllowed).
+func downloadHttpFile(rawUrl string, dstDir string, basicUser string, basicPass string) (*string, error) {
 	u, err := url.Parse(rawUrl)
 	if err != nil {
 		return nil, err
@@ -220,8 +239,15 @@ func downloadHttpFile(rawUrl string, dstDir string) (*string, error) {
 	if filename == "" || filename == "." || filename == "/" {
 		return nil, fmt.Errorf("unable to determine filename from url")
 	}
+	req, err := http.NewRequest(http.MethodGet, rawUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	if basicUser != "" || basicPass != "" {
+		req.SetBasicAuth(basicUser, basicPass)
+	}
 	client := &http.Client{Timeout: httpDownloadTimeout}
-	resp, err := client.Get(rawUrl)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

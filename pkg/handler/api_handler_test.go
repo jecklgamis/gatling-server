@@ -152,27 +152,29 @@ func createApiHandler() http.Handler {
 
 func createApiHandlerWith(s3Ops s3.S3Ops) http.Handler {
 	return http.HandlerFunc(NewApiHandler(someWorkspace(), someTaskManager(), s3Ops, someApiToken,
-		nil, []string{"some-bucket"}).Handle)
+		nil, []string{"some-bucket"}, someApiToken, someApiToken).Handle)
 }
 
 func TestCheckHttpHostAllowedForDefaultAllowlistedHost(t *testing.T) {
-	err := checkHttpHostAllowed("localhost", DefaultAllowedHttpHosts)
+	explicit, err := checkHttpHostAllowed("localhost", DefaultAllowedHttpHosts)
 	test.Assertf(t, err == nil, "expecting localhost to be allowed : %v", err)
+	test.Assertf(t, explicit, "expecting localhost to be an explicit allowlist match")
 }
 
 func TestCheckHttpHostAllowedRejectsPrivateIP(t *testing.T) {
-	err := checkHttpHostAllowed("10.0.0.5", DefaultAllowedHttpHosts)
+	_, err := checkHttpHostAllowed("10.0.0.5", DefaultAllowedHttpHosts)
 	test.Assertf(t, err != nil, "expecting private IP to be rejected")
 }
 
 func TestCheckHttpHostAllowedRejectsLinkLocalMetadataIP(t *testing.T) {
-	err := checkHttpHostAllowed("169.254.169.254", DefaultAllowedHttpHosts)
+	_, err := checkHttpHostAllowed("169.254.169.254", DefaultAllowedHttpHosts)
 	test.Assertf(t, err != nil, "expecting link-local metadata IP to be rejected")
 }
 
 func TestCheckHttpHostAllowedAllowsPublicIP(t *testing.T) {
-	err := checkHttpHostAllowed("1.1.1.1", DefaultAllowedHttpHosts)
+	explicit, err := checkHttpHostAllowed("1.1.1.1", DefaultAllowedHttpHosts)
 	test.Assertf(t, err == nil, "expecting public IP to be allowed : %v", err)
+	test.Assertf(t, !explicit, "expecting public IP fallback match to not be reported as explicit")
 }
 
 func TestIsAllowedBucketMatch(t *testing.T) {

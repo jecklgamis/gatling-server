@@ -24,7 +24,7 @@ An API server for running [Gatling](https://gatling.io/) OSS load test simulatio
 | `/probe/live`                      | GET    | —      | —                                                            | Liveness probe                                                     |
 | `/task/upload`                     | POST   | Bearer | multipart: `file`, `simulation`, `javaOpts`                   | Upload a jar and submit + run it in one call                       |
 | `/upload`                          | POST   | Bearer | multipart: `file`                                            | Upload any file; returns `{"id": "<uuid>"}`                        |
-| `/uploads/{id}/{filename}`         | GET    | —      | —                                                            | Download/browse an uploaded file                                   |
+| `/uploads/{id}/{filename}`         | GET    | Basic  | —                                                            | Download/browse an uploaded file                                   |
 | `/task/submit`                     | POST   | Bearer | JSON: `simulation`, `javaOpts`, `url` (http(s) or s3)         | Download the jar from `url` and submit + run it                    |
 | `/task/{taskId}`                   | GET    | Bearer | —                                                            | Task runtime status                                                 |
 | `/task/metadata/{taskId}`          | GET    | Bearer | —                                                            | Original submission metadata                                        |
@@ -32,11 +32,15 @@ An API server for running [Gatling](https://gatling.io/) OSS load test simulatio
 | `/task/simulationLog/{taskId}`     | GET    | Bearer | —                                                            | Gatling's own simulation log                                        |
 | `/task/results/{taskId}`           | GET    | Bearer | —                                                            | Results archive (`results.tar.gz`)                                  |
 | `/task/abort/{taskId}`             | POST   | Bearer | —                                                            | Kill a running task                                                 |
-| `/workspace/{taskId}/...`          | GET    | Bearer | —                                                            | Browse raw task workspace files                                     |
+| `/workspace/{taskId}/...`          | GET    | Basic  | —                                                            | Browse raw task workspace files                                     |
 | `/blackhole`                       | POST   | —      | —                                                            | No-op sink (default HTTP event-notifier target)                     |
 
-`Bearer` means `Authorization: Bearer <API_TOKEN>` is required; missing/invalid tokens get `401 Unauthorized`, and
-repeated failures from the same client are rate-limited with `429 Too Many Requests`.
+`Bearer` means `Authorization: Bearer <API_TOKEN>` is required. `Basic` means HTTP Basic Auth is required, using the
+`browseAuth.username`/`browseAuth.password` credentials from `configs/config-<env>.yaml` (each defaults to `default`
+if unset) — chosen over bearer tokens for these two endpoints specifically because they're meant to be browsed
+directly: the browser's native login prompt lets you click through file listings without attaching a header by
+hand. Either scheme's missing/invalid credentials get `401 Unauthorized`, and repeated failures from the same client
+are rate-limited with `429 Too Many Requests`.
 
 ## Getting Started
 
@@ -99,7 +103,8 @@ curl -H "Authorization: Bearer ${API_TOKEN}" -F "file=@target/gatling-scala-exam
 # => {"id":"<uuid>"}
 ```
 
-Uploaded files are stored at `uploads/<uuid>/<filename>` and served directly (no auth) from `/uploads/<uuid>/<filename>`.
+Uploaded files are stored at `uploads/<uuid>/<filename>` and served directly (HTTP Basic Auth, see above) from
+`/uploads/<uuid>/<filename>`.
 
 ```bash
 curl -v -H "Content-Type: application/json" http://localhost:58080/task/submit -d @request.json
