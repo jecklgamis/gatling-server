@@ -88,6 +88,16 @@ func TestApiHandlerS3NotEnabled(t *testing.T) {
 	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %v", rr.Code)
 }
 
+func TestApiHandlerS3BucketNotAllowlisted(t *testing.T) {
+	req := createSubmitTaskHttpRequest(t, "gatling.test.example.simulation.ExampleSimulation",
+		"", "s3://some-other-bucket/some.jar")
+	rr := httptest.NewRecorder()
+	s3Ops := s3.NewFakeS3Ops(fileioutil.MustReadFile("testdata/gatling-scala-example-lean.jar"),
+		tempFile("gatling-scala-example-lean.jar"), nil)
+	createApiHandlerWith(s3Ops).ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %v", rr.Code)
+}
+
 func TestApiHandlerS3DownloadJarSimulation(t *testing.T) {
 	req := createSubmitTaskHttpRequest(t,
 		"gatling.test.example.simulation.ExampleSimulation",
@@ -141,7 +151,40 @@ func createApiHandler() http.Handler {
 }
 
 func createApiHandlerWith(s3Ops s3.S3Ops) http.Handler {
-	return http.HandlerFunc(NewApiHandler(someWorkspace(), someTaskManager(), s3Ops, someApiToken).Handle)
+	return http.HandlerFunc(NewApiHandler(someWorkspace(), someTaskManager(), s3Ops, someApiToken,
+		nil, []string{"some-bucket"}).Handle)
+}
+
+func TestCheckHttpHostAllowedForDefaultAllowlistedHost(t *testing.T) {
+	err := checkHttpHostAllowed("localhost", DefaultAllowedHttpHosts)
+	test.Assertf(t, err == nil, "expecting localhost to be allowed : %v", err)
+}
+
+func TestCheckHttpHostAllowedRejectsPrivateIP(t *testing.T) {
+	err := checkHttpHostAllowed("10.0.0.5", DefaultAllowedHttpHosts)
+	test.Assertf(t, err != nil, "expecting private IP to be rejected")
+}
+
+func TestCheckHttpHostAllowedRejectsLinkLocalMetadataIP(t *testing.T) {
+	err := checkHttpHostAllowed("169.254.169.254", DefaultAllowedHttpHosts)
+	test.Assertf(t, err != nil, "expecting link-local metadata IP to be rejected")
+}
+
+func TestCheckHttpHostAllowedAllowsPublicIP(t *testing.T) {
+	err := checkHttpHostAllowed("1.1.1.1", DefaultAllowedHttpHosts)
+	test.Assertf(t, err == nil, "expecting public IP to be allowed : %v", err)
+}
+
+func TestIsAllowedBucketMatch(t *testing.T) {
+	test.Assertf(t, isAllowedBucket("some-bucket", []string{"some-bucket"}), "expecting bucket to be allowed")
+}
+
+func TestIsAllowedBucketNoMatch(t *testing.T) {
+	test.Assertf(t, !isAllowedBucket("some-bucket", []string{"some-other-bucket"}), "expecting bucket to be denied")
+}
+
+func TestIsAllowedBucketEmptyListDeniesAll(t *testing.T) {
+	test.Assertf(t, !isAllowedBucket("some-bucket", nil), "expecting empty allowlist to deny everything")
 }
 
 func createSubmitTaskHttpRequest(t *testing.T, simulation, javaOpts, url string) *http.Request {

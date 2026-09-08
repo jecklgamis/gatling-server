@@ -47,6 +47,14 @@ type HeartbeatConfig struct {
 	Frequency time.Duration
 }
 
+// TaskSubmitConfig scopes what /task/submit is allowed to fetch, so a valid
+// API token can't be used to pivot the server into reaching arbitrary
+// internal/cloud-metadata hosts. AllowedHttpHosts defaults to
+// handler.DefaultAllowedHttpHosts when left empty.
+type TaskSubmitConfig struct {
+	AllowedHttpHosts []string
+}
+
 type Config struct {
 	Server         ListenerConfig
 	ScriptsDir     string
@@ -58,6 +66,7 @@ type Config struct {
 	Downloaders    map[string]DownloaderConfig
 	TaskTimeout    time.Duration
 	LogLevel       string
+	TaskSubmit     TaskSubmitConfig
 }
 
 // ParseLogLevel maps a config log level string (debug/info/warn/error, case
