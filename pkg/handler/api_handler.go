@@ -11,6 +11,7 @@ import (
 	"io"
 
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,19 +25,37 @@ const (
 	httpDownloadTimeout   = 5 * time.Minute
 )
 
+// DefaultAllowedHttpHosts is used when no explicit allowlist is configured,
+// so the documented "upload then submit against http://<self>/uploads/..."
+// flow keeps working out of the box.
+var DefaultAllowedHttpHosts = []string{"localhost", "127.0.0.1", "::1"}
+
 // ApiHandler accepts a generic task submission request whose Url may point to
 // either an http(s) location or an s3:// location, downloads the referenced
 // jar accordingly, and submits it as a task.
+//
+// Both download paths are scoped to prevent the server from being used as an
+// SSRF pivot with a valid API token: http(s) downloads are restricted to
+// AllowedHttpHosts (anything else is only allowed if it resolves to a public,
+// non-private/link-local/loopback address), and s3 downloads are restricted
+// to AllowedS3Buckets.
 type ApiHandler struct {
-	WorkspaceOps workspace.Ops
-	TaskOps      taskmanager.Ops
-	s3Ops        s3.S3Ops
-	ApiToken     string
-	authLimiter  *authLimiter
+	WorkspaceOps     workspace.Ops
+	TaskOps          taskmanager.Ops
+	s3Ops            s3.S3Ops
+	ApiToken         string
+	AllowedHttpHosts []string
+	AllowedS3Buckets []string
+	authLimiter      *authLimiter
 }
 
-func NewApiHandler(workspaceOps workspace.Ops, taskOps taskmanager.Ops, s3Ops s3.S3Ops, apiToken string) *ApiHandler {
-	return &ApiHandler{WorkspaceOps: workspaceOps, TaskOps: taskOps, s3Ops: s3Ops, ApiToken: apiToken, authLimiter: newAuthLimiter()}
+func NewApiHandler(workspaceOps workspace.Ops, taskOps taskmanager.Ops, s3Ops s3.S3Ops, apiToken string,
+	allowedHttpHosts []string, allowedS3Buckets []string) *ApiHandler {
+	if allowedHttpHosts == nil {
+		allowedHttpHosts = DefaultAllowedHttpHosts
+	}
+	return &ApiHandler{WorkspaceOps: workspaceOps, TaskOps: taskOps, s3Ops: s3Ops, ApiToken: apiToken,
+		AllowedHttpHosts: allowedHttpHosts, AllowedS3Buckets: allowedS3Buckets, authLimiter: newAuthLimiter()}
 }
 
 func (h *ApiHandler) Handle(w http.ResponseWriter, r *http.Request) {
@@ -139,12 +158,57 @@ func (h *ApiHandler) download(rawUrl string, dstDir string) (*string, error) {
 		if h.s3Ops == nil {
 			return nil, fmt.Errorf("s3 downloads are not enabled")
 		}
+		bucket, _, err := s3.ParseS3Uri(rawUrl)
+		if err != nil {
+			return nil, err
+		}
+		if !isAllowedBucket(bucket, h.AllowedS3Buckets) {
+			return nil, fmt.Errorf("bucket %q is not in the allowed s3 bucket list", bucket)
+		}
 		return h.s3Ops.DownloadUrl(rawUrl, dstDir)
 	case "http", "https":
+		if err := checkHttpHostAllowed(u.Hostname(), h.AllowedHttpHosts); err != nil {
+			return nil, err
+		}
 		return downloadHttpFile(rawUrl, dstDir)
 	default:
 		return nil, fmt.Errorf("unsupported url scheme %q", u.Scheme)
 	}
+}
+
+// isAllowedBucket reports whether bucket is in allowedBuckets. An empty
+// allowedBuckets list denies every bucket - the s3 downloader must be
+// explicitly scoped before it can be used.
+func isAllowedBucket(bucket string, allowedBuckets []string) bool {
+	for _, b := range allowedBuckets {
+		if strings.EqualFold(b, bucket) {
+			return true
+		}
+	}
+	return false
+}
+
+// checkHttpHostAllowed rejects hosts that would let an authenticated caller
+// pivot the server into fetching internal/cloud-metadata resources. A host
+// explicitly present in allowedHosts is always permitted (this is how the
+// documented "submit a URL pointing back at my own /uploads" flow keeps
+// working); anything else must resolve only to public IP addresses.
+func checkHttpHostAllowed(host string, allowedHosts []string) error {
+	for _, allowed := range allowedHosts {
+		if strings.EqualFold(allowed, host) {
+			return nil
+		}
+	}
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return fmt.Errorf("unable to resolve host %q: %w", host, err)
+	}
+	for _, ip := range ips {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			return fmt.Errorf("host %q resolves to a disallowed address %s", host, ip)
+		}
+	}
+	return nil
 }
 
 func downloadHttpFile(rawUrl string, dstDir string) (*string, error) {

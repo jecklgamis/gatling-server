@@ -24,9 +24,20 @@ func WaitUntil(retryDelay time.Duration, retries int, callback func(counter int)
 }
 
 func WaitUntilHTTPGetOk(url string, delay time.Duration, retries int) error {
+	return WaitUntilHTTPGetOkWithHeaders(url, nil, delay, retries)
+}
+
+func WaitUntilHTTPGetOkWithHeaders(url string, headers map[string]string, delay time.Duration, retries int) error {
 	slog.Info("Waiting until GET is OK", "url", url, "delay", delay.String(), "retries", retries)
 	err := WaitUntil(delay, retries, func(counter int) bool {
-		resp, err := http.Get(url)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return false
+		}
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return false
 		}

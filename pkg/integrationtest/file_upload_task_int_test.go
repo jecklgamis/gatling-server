@@ -85,25 +85,30 @@ func TestAbortTask(t *testing.T) {
 	time.Sleep(3 * time.Second)
 	abortUrl := fmt.Sprintf("%s/task/abort/%s", baseUrl, entity.TaskId)
 	slog.Info("abort", "url", abortUrl)
-	resp, err = http.Post(abortUrl, "*/*", strings.NewReader(""))
+	req, err := http.NewRequest(http.MethodPost, abortUrl, strings.NewReader(""))
+	test.Assertf(t, err == nil, "unable to create abort request :%v", err)
+	req.Header.Set("Authorization", "Bearer "+testApiToken)
+	resp, err = http.DefaultClient.Do(req)
 	test.Assertf(t, err == nil, "unable to abort task :%v", err)
 	test.Assertf(t, resp.StatusCode == http.StatusOK, "expecting 200 but got %v", resp.StatusCode)
 }
 
 func validateArtifacts(t *testing.T, baseUrl string, taskId string) {
-	err := waiter.WaitUntilHTTPGetOk(taskUrl(baseUrl, "metadata", taskId), 1*time.Second, 45)
+	authHeaders := map[string]string{"Authorization": "Bearer " + testApiToken}
+
+	err := waiter.WaitUntilHTTPGetOkWithHeaders(taskUrl(baseUrl, "metadata", taskId), authHeaders, 1*time.Second, 45)
 	test.Assertf(t, err == nil, "failed to fetch metadata")
 
-	err = waiter.WaitUntilHTTPGetOk(taskUrl(baseUrl, "console", taskId), 1*time.Second, 45)
+	err = waiter.WaitUntilHTTPGetOkWithHeaders(taskUrl(baseUrl, "console", taskId), authHeaders, 1*time.Second, 45)
 	test.Assertf(t, err == nil, "failed to fetch console logs")
 
-	err = waiter.WaitUntilHTTPGetOk(taskUrl(baseUrl, "results", taskId), 1*time.Second, 45)
+	err = waiter.WaitUntilHTTPGetOkWithHeaders(taskUrl(baseUrl, "results", taskId), authHeaders, 1*time.Second, 45)
 	test.Assertf(t, err == nil, "failed to fetch results")
 
-	err = waiter.WaitUntilHTTPGetOk(taskUrl(baseUrl, "simulationLog", taskId), 1*time.Second, 45)
+	err = waiter.WaitUntilHTTPGetOkWithHeaders(taskUrl(baseUrl, "simulationLog", taskId), authHeaders, 1*time.Second, 45)
 	test.Assertf(t, err == nil, "failed to fetch simulation log")
 
-	err = waiter.WaitUntilHTTPGetOk(taskUrl(baseUrl, "", taskId), 1*time.Second, 45)
+	err = waiter.WaitUntilHTTPGetOkWithHeaders(taskUrl(baseUrl, "", taskId), authHeaders, 1*time.Second, 45)
 	test.Assertf(t, err == nil, "failed to fetch task")
 }
 

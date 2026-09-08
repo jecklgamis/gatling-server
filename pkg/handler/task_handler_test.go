@@ -22,7 +22,7 @@ func TestGetMetadata(t *testing.T) {
 	mux.SetURLVars(req, map[string]string{"taskId": "some-task-id"})
 
 	workspaceOps := someWorkspace()
-	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager()).MetadataHandler)
+	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager(), someApiToken).MetadataHandler)
 	router := mux.NewRouter()
 	router.HandleFunc("/task/metadata/{taskId}", handler)
 
@@ -37,9 +37,20 @@ func TestGetMetadataRejectsPathTraversalTaskId(t *testing.T) {
 	mux.SetURLVars(req, map[string]string{"taskId": "../../../../etc/passwd"})
 
 	workspaceOps := someWorkspace()
-	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager()).MetadataHandler)
+	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager(), someApiToken).MetadataHandler)
 	handler.ServeHTTP(rr, req)
 	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %v", rr.Code)
+}
+
+func TestGetMetadataWithoutApiTokenIsUnauthorized(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "/task/metadata/some-task-id", nil)
+	test.Assertf(t, err == nil, "failed to create request")
+	mux.SetURLVars(req, map[string]string{"taskId": "some-task-id"})
+
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager(), someApiToken).MetadataHandler)
+	handler.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusUnauthorized, "unexpected status code %v", rr.Code)
 }
 
 func TestGetConsoleLog(t *testing.T) {
@@ -48,7 +59,7 @@ func TestGetConsoleLog(t *testing.T) {
 	mux.SetURLVars(req, map[string]string{"taskId": "some-task-id"})
 
 	workspaceOps := someWorkspace()
-	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager()).ConsoleLogHandler)
+	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager(), someApiToken).ConsoleLogHandler)
 	router := mux.NewRouter()
 	router.HandleFunc("/task/console/{taskId}", handler)
 
@@ -63,7 +74,7 @@ func TestSimulationLog(t *testing.T) {
 	mux.SetURLVars(req, map[string]string{"taskId": "some-task-id"})
 
 	workspaceOps := someWorkspace()
-	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager()).SimulationLogHandler)
+	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager(), someApiToken).SimulationLogHandler)
 	router := mux.NewRouter()
 	router.HandleFunc("/task/console/{taskId}", handler)
 
@@ -77,7 +88,7 @@ func TestSimulationLogRejectsInvalidTaskId(t *testing.T) {
 	req := someGetRequest(t, "/task/console/whatever")
 	mux.SetURLVars(req, map[string]string{"taskId": "../../../../etc/passwd"})
 
-	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager()).SimulationLogHandler)
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager(), someApiToken).SimulationLogHandler)
 	handler.ServeHTTP(rr, req)
 	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %d", rr.Code)
 }
@@ -86,7 +97,7 @@ func TestSimulationLogMissingResultsDir(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := someGetRequest(t, "/task/console/some-task-id")
 
-	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager()).SimulationLogHandler)
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager(), someApiToken).SimulationLogHandler)
 	router := mux.NewRouter()
 	router.HandleFunc("/task/console/{taskId}", handler)
 	router.ServeHTTP(rr, req)
@@ -101,7 +112,7 @@ func TestSimulationLogMissingFile(t *testing.T) {
 	_, err := workspaceOps.NewUserFilesDir("some-task-id")
 	test.Assertf(t, err == nil, "unable to create user files dir")
 
-	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager()).SimulationLogHandler)
+	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager(), someApiToken).SimulationLogHandler)
 	router := mux.NewRouter()
 	router.HandleFunc("/task/console/{taskId}", handler)
 	router.ServeHTTP(rr, req)
@@ -114,7 +125,7 @@ func TestGetResults(t *testing.T) {
 	mux.SetURLVars(req, map[string]string{"taskId": "some-task-id"})
 
 	workspaceOps := someWorkspace()
-	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager()).ResultsHandler)
+	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, someTaskManager(), someApiToken).ResultsHandler)
 	router := mux.NewRouter()
 	router.HandleFunc("/task/results/{taskId}", handler)
 
@@ -124,7 +135,7 @@ func TestGetResults(t *testing.T) {
 }
 
 func TestGetMetadataWithoutTaskId(t *testing.T) {
-	taskHandler := NewTaskHandler(someWorkspace(), someTaskManager())
+	taskHandler := NewTaskHandler(someWorkspace(), someTaskManager(), someApiToken)
 	handler := http.HandlerFunc(taskHandler.MetadataHandler)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, someGetRequest(t, ""))
@@ -140,13 +151,27 @@ func TestAbortTask(t *testing.T) {
 	taskManager := someTaskManager()
 	taskManager.TaskContexts["some-task-id"] = &taskmanager.TaskRuntimeContext{
 		Process: someProcess(), Task: &gatling.Task{Id: "some-task-id"}}
-	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, taskManager).AbortTaskHandler)
+	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, taskManager, someApiToken).AbortTaskHandler)
 	router := mux.NewRouter()
 	router.HandleFunc("/task/abort/{taskId}", handler)
 
 	creteSomeUsersFilesDir(t, workspaceOps, "some-task-id")
 	router.ServeHTTP(rr, req)
 	test.Assertf(t, rr.Code == http.StatusOK, "expecting 200 but got %d", rr.Code)
+}
+
+func TestAbortTaskWithoutApiTokenIsUnauthorized(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req, err := http.NewRequest("POST", "/task/abort/some-task-id", nil)
+	test.Assertf(t, err == nil, "failed to create request")
+	mux.SetURLVars(req, map[string]string{"taskId": "some-task-id"})
+
+	taskManager := someTaskManager()
+	taskManager.TaskContexts["some-task-id"] = &taskmanager.TaskRuntimeContext{
+		Process: someProcess(), Task: &gatling.Task{Id: "some-task-id"}}
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), taskManager, someApiToken).AbortTaskHandler)
+	handler.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusUnauthorized, "unexpected status code %d", rr.Code)
 }
 
 func TestAbortUnknownTask(t *testing.T) {
@@ -156,7 +181,7 @@ func TestAbortUnknownTask(t *testing.T) {
 
 	workspaceOps := someWorkspace()
 	taskManager := someTaskManager()
-	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, taskManager).AbortTaskHandler)
+	handler := http.HandlerFunc(NewTaskHandler(workspaceOps, taskManager, someApiToken).AbortTaskHandler)
 	router := mux.NewRouter()
 	router.HandleFunc("/task/abort/{taskId}", handler)
 
@@ -172,7 +197,7 @@ func TestTaskContextHandler(t *testing.T) {
 	taskManager := someTaskManager()
 	taskManager.TaskContexts["some-task-id"] = &taskmanager.TaskRuntimeContext{
 		Task: &gatling.Task{Id: "some-task-id"}, Status: taskmanager.TaskStarted}
-	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), taskManager).TaskContextHandler)
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), taskManager, someApiToken).TaskContextHandler)
 	router := mux.NewRouter()
 	router.HandleFunc("/task/{taskId}", handler)
 	router.ServeHTTP(rr, req)
@@ -189,7 +214,7 @@ func TestTaskContextHandlerRejectsInvalidTaskId(t *testing.T) {
 	req := someGetRequest(t, "/task/whatever")
 	mux.SetURLVars(req, map[string]string{"taskId": "../../../../etc/passwd"})
 
-	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager()).TaskContextHandler)
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager(), someApiToken).TaskContextHandler)
 	handler.ServeHTTP(rr, req)
 	test.Assertf(t, rr.Code == http.StatusBadRequest, "unexpected status code %d", rr.Code)
 }
@@ -198,11 +223,23 @@ func TestTaskContextHandlerUnknownTask(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := someGetRequest(t, "/task/some-task-id")
 
-	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager()).TaskContextHandler)
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager(), someApiToken).TaskContextHandler)
 	router := mux.NewRouter()
 	router.HandleFunc("/task/{taskId}", handler)
 	router.ServeHTTP(rr, req)
 	test.Assertf(t, rr.Code == http.StatusNotFound, "unexpected status code %d", rr.Code)
+}
+
+func TestTaskContextHandlerWithoutApiTokenIsUnauthorized(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "/task/some-task-id", nil)
+	test.Assertf(t, err == nil, "failed to create request")
+
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), someTaskManager(), someApiToken).TaskContextHandler)
+	router := mux.NewRouter()
+	router.HandleFunc("/task/{taskId}", handler)
+	router.ServeHTTP(rr, req)
+	test.Assertf(t, rr.Code == http.StatusUnauthorized, "unexpected status code %d", rr.Code)
 }
 
 func TestAbortTaskHandlerReturnsInternalServerErrorWhenAbortFails(t *testing.T) {
@@ -212,7 +249,7 @@ func TestAbortTaskHandlerReturnsInternalServerErrorWhenAbortFails(t *testing.T) 
 	taskManager := someTaskManager()
 	taskManager.TaskContexts["some-task-id"] = &taskmanager.TaskRuntimeContext{
 		Task: &gatling.Task{Id: "some-task-id"}, Status: taskmanager.TaskCompleted}
-	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), taskManager).AbortTaskHandler)
+	handler := http.HandlerFunc(NewTaskHandler(someWorkspace(), taskManager, someApiToken).AbortTaskHandler)
 	router := mux.NewRouter()
 	router.HandleFunc("/task/abort/{taskId}", handler)
 	router.ServeHTTP(rr, req)
@@ -261,11 +298,13 @@ func validateOk(t *testing.T, rr *httptest.ResponseRecorder, contentType string)
 func someGetRequest(t *testing.T, path string) *http.Request {
 	request, err := http.NewRequest("GET", path, nil)
 	test.Assertf(t, err == nil, "failed to create request")
+	request.Header.Set("Authorization", "Bearer "+someApiToken)
 	return request
 }
 
 func somePostRequest(t *testing.T, path string) *http.Request {
 	request, err := http.NewRequest("POST", path, nil)
 	test.Assertf(t, err == nil, "failed to create request")
+	request.Header.Set("Authorization", "Bearer "+someApiToken)
 	return request
 }

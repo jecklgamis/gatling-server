@@ -19,13 +19,15 @@ func TestDownloadJarSimulationFromS3(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
-	viper.Set("DOWNLOADERS.S3.ENABLED", "true")
-	viper.Set("DOWNLOADERS.S3.CONFIGMAP.REGION", env.GetOrPanic("AWS_REGION"))
-	baseUrl := startServer()
-	_ = waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
 	s3url := env.GetOrPanic("GATLING_SERVER_INCOMING_S3_URL")
 	bucket, _, err := s3.ParseS3Uri(s3url)
 	test.Assert(t, err == nil, "unable to parse s3 url")
+
+	viper.Set("DOWNLOADERS.S3.ENABLED", "true")
+	viper.Set("DOWNLOADERS.S3.CONFIGMAP.REGION", env.GetOrPanic("AWS_REGION"))
+	viper.Set("DOWNLOADERS.S3.CONFIGMAP.ALLOWEDBUCKETS", bucket)
+	baseUrl := startServer()
+	_ = waiter.WaitUntilHTTPGetOk(fmt.Sprintf("%s/probe/ready", baseUrl), 1*time.Second, 3)
 
 	request := &api.SubmitTaskRequest{
 		Url:        fmt.Sprintf("s3://%s/gatling-scala-example-lean.jar", bucket),
@@ -37,7 +39,11 @@ func TestDownloadJarSimulationFromS3(t *testing.T) {
 
 	url := fmt.Sprintf("%s/task/submit", baseUrl)
 	reader := strings.NewReader(string(requestBytes))
-	resp, err := http.Post(url, "application/json", reader)
+	req, err := http.NewRequest(http.MethodPost, url, reader)
+	test.Assertf(t, err == nil, "unable to create request")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+testApiToken)
+	resp, err := http.DefaultClient.Do(req)
 
 	test.Assertf(t, err == nil, "unable to send request to %s", url)
 	test.Assertf(t, resp.StatusCode == http.StatusOK, "unable to send request :%v", resp.StatusCode)

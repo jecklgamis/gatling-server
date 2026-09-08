@@ -17,6 +17,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -75,19 +76,27 @@ func Start() {
 	router.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
 
 	var s3ops s3.S3Ops
+	var allowedS3Buckets []string
 	s3Config, found := config.Downloaders["s3"]
 	if found && s3Config.Enabled {
 		region, found := s3Config.ConfigMap["region"]
 		if found {
 			s3ops = s3.NewS3Manager(region)
+			if buckets, ok := s3Config.ConfigMap["allowedBuckets"]; ok && buckets != "" {
+				for _, b := range strings.Split(buckets, ",") {
+					allowedS3Buckets = append(allowedS3Buckets, strings.TrimSpace(b))
+				}
+			} else {
+				slog.Warn("S3 downloader has no allowedBuckets configured; s3 downloads via /task/submit will be rejected")
+			}
 		} else {
 			slog.Warn("S3 downloader missing region config")
 		}
 	}
 
-	apiHandler := handler.NewApiHandler(workspace, taskManager, s3ops, apiToken)
+	apiHandler := handler.NewApiHandler(workspace, taskManager, s3ops, apiToken, config.TaskSubmit.AllowedHttpHosts, allowedS3Buckets)
 	router.HandleFunc("/task/submit", apiHandler.Handle)
-	taskHandler := handler.NewTaskHandler(workspace, taskManager)
+	taskHandler := handler.NewTaskHandler(workspace, taskManager, apiToken)
 	router.HandleFunc("/task/{taskId}", taskHandler.TaskContextHandler)
 	router.HandleFunc("/task/metadata/{taskId}", taskHandler.MetadataHandler)
 	router.HandleFunc("/task/console/{taskId}", taskHandler.ConsoleLogHandler)
@@ -97,7 +106,7 @@ func Start() {
 	router.HandleFunc("/blackhole", handler.BlackholeHandler)
 
 	fs := http.FileServer(http.Dir(workspace.BaseDir() + "/"))
-	router.PathPrefix("/workspace/").Handler(http.StripPrefix("/workspace/", fs))
+	router.PathPrefix("/workspace/").Handler(handler.RequireAuth(http.StripPrefix("/workspace/", fs), apiToken))
 	router.HandleFunc("/", handler.RootHandler)
 	printRoutes(router)
 	router.Use(accesslog.AccessLoggerMiddleware)

@@ -26,10 +26,31 @@ type TaskHandler struct {
 	WorkspaceOps workspace.Ops
 	TaskOps      taskmanager.Ops
 	UploadDir    string
+	ApiToken     string
+	authLimiter  *authLimiter
 }
 
-func NewTaskHandler(workspace workspace.Ops, taskOps taskmanager.Ops) *TaskHandler {
-	return &TaskHandler{WorkspaceOps: workspace, TaskOps: taskOps}
+func NewTaskHandler(workspace workspace.Ops, taskOps taskmanager.Ops, apiToken string) *TaskHandler {
+	return &TaskHandler{WorkspaceOps: workspace, TaskOps: taskOps, ApiToken: apiToken, authLimiter: newAuthLimiter()}
+}
+
+// checkAuth enforces the bearer token and per-client rate limiting shared by
+// every task-read/abort endpoint, writing the appropriate error response and
+// returning false if the request should not proceed.
+func (h *TaskHandler) checkAuth(w http.ResponseWriter, r *http.Request) bool {
+	clientKey := clientIP(r)
+	if h.authLimiter.blocked(clientKey) {
+		slog.Warn("Too many failed auth attempts from", "clientKey", clientKey)
+		tooManyRequestsWithError(w, fmt.Errorf("too many failed authentication attempts"))
+		return false
+	}
+	if !isAuthorized(r, h.ApiToken) {
+		h.authLimiter.recordFailure(clientKey)
+		slog.Warn("Missing or invalid API token")
+		unauthorizedWithError(w, fmt.Errorf("missing or invalid API token"))
+		return false
+	}
+	return true
 }
 
 func (h *TaskHandler) MetadataHandler(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +66,9 @@ func (h *TaskHandler) ConsoleLogHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *TaskHandler) TaskContextHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.checkAuth(w, r) {
+		return
+	}
 	vars := mux.Vars(r)
 	taskId := vars["taskId"]
 	if !isValidTaskId(taskId) {
@@ -61,6 +85,9 @@ func (h *TaskHandler) TaskContextHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *TaskHandler) AbortTaskHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.checkAuth(w, r) {
+		return
+	}
 	vars := mux.Vars(r)
 	taskId := vars["taskId"]
 	if !isValidTaskId(taskId) {
@@ -82,6 +109,9 @@ func (h *TaskHandler) AbortTaskHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) SimulationLogHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.checkAuth(w, r) {
+		return
+	}
 	vars := mux.Vars(r)
 	taskId := vars["taskId"]
 	if !isValidTaskId(taskId) {
@@ -107,6 +137,9 @@ func (h *TaskHandler) SimulationLogHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *TaskHandler) serveFileFromWorkspace(w http.ResponseWriter, r *http.Request, file string, contentType string) {
+	if !h.checkAuth(w, r) {
+		return
+	}
 	vars := mux.Vars(r)
 	taskId := vars["taskId"]
 	if !isValidTaskId(taskId) {

@@ -26,13 +26,13 @@ An API server for running [Gatling](https://gatling.io/) OSS load test simulatio
 | `/upload`                          | POST   | Bearer | multipart: `file`                                            | Upload any file; returns `{"id": "<uuid>"}`                        |
 | `/uploads/{id}/{filename}`         | GET    | —      | —                                                            | Download/browse an uploaded file                                   |
 | `/task/submit`                     | POST   | Bearer | JSON: `simulation`, `javaOpts`, `url` (http(s) or s3)         | Download the jar from `url` and submit + run it                    |
-| `/task/{taskId}`                   | GET    | —      | —                                                            | Task runtime status                                                 |
-| `/task/metadata/{taskId}`          | GET    | —      | —                                                            | Original submission metadata                                        |
-| `/task/console/{taskId}`           | GET    | —      | —                                                            | Raw JVM console log                                                 |
-| `/task/simulationLog/{taskId}`     | GET    | —      | —                                                            | Gatling's own simulation log                                        |
-| `/task/results/{taskId}`           | GET    | —      | —                                                            | Results archive (`results.tar.gz`)                                  |
-| `/task/abort/{taskId}`             | POST   | —      | —                                                            | Kill a running task                                                 |
-| `/workspace/{taskId}/...`          | GET    | —      | —                                                            | Browse raw task workspace files                                     |
+| `/task/{taskId}`                   | GET    | Bearer | —                                                            | Task runtime status                                                 |
+| `/task/metadata/{taskId}`          | GET    | Bearer | —                                                            | Original submission metadata                                        |
+| `/task/console/{taskId}`           | GET    | Bearer | —                                                            | Raw JVM console log                                                 |
+| `/task/simulationLog/{taskId}`     | GET    | Bearer | —                                                            | Gatling's own simulation log                                        |
+| `/task/results/{taskId}`           | GET    | Bearer | —                                                            | Results archive (`results.tar.gz`)                                  |
+| `/task/abort/{taskId}`             | POST   | Bearer | —                                                            | Kill a running task                                                 |
+| `/workspace/{taskId}/...`          | GET    | Bearer | —                                                            | Browse raw task workspace files                                     |
 | `/blackhole`                       | POST   | —      | —                                                            | No-op sink (default HTTP event-notifier target)                     |
 
 `Bearer` means `Authorization: Bearer <API_TOKEN>` is required; missing/invalid tokens get `401 Unauthorized`, and
@@ -115,7 +115,9 @@ curl -v -H "Content-Type: application/json" http://localhost:58080/task/submit -
 }
 ```
 
-`url` also accepts `s3://...` locations. This requires the S3 downloader to be enabled in `configs/config-<env>.yaml`:
+`url` also accepts `s3://...` locations. This requires the S3 downloader to be enabled *and* scoped to specific
+bucket(s) in `configs/config-<env>.yaml` — s3 downloads are rejected by default until `allowedBuckets` is set,
+so a valid API token can't be used to read arbitrary buckets your AWS credentials can reach:
 
 ```yaml
 downloaders:
@@ -123,12 +125,25 @@ downloaders:
     enabled: true
     configMap:
       region: some-region
+      allowedBuckets: gatling-server-incoming,another-bucket
+```
+
+Similarly, `url` for http(s) downloads is restricted to `localhost`/`127.0.0.1`/`::1` (so the self-referential
+`/uploads` flow above keeps working) plus anything that resolves to a public IP — private, loopback, and link-local
+addresses (including the cloud metadata endpoint) are rejected unless the host is explicitly added to
+`taskSubmit.allowedHttpHosts` in `configs/config-<env>.yaml`:
+
+```yaml
+taskSubmit:
+  allowedHttpHosts:
+    - localhost
+    - some.internal.host
 ```
 
 ### Aborting a task
 
 ```bash
-curl -X POST http://localhost:58080/task/abort/{taskId}
+curl -X POST -H "Authorization: Bearer ${API_TOKEN}" http://localhost:58080/task/abort/{taskId}
 ```
 
 ## Retrieving Artifacts
@@ -137,7 +152,7 @@ A simulation run produces a console log, Gatling report, simulation log, and the
 `/task/*` rows in the API Reference above). These are available directly from the server, and are also uploaded to S3
 if an S3 uploader is configured. The test report is a downloadable `tar.gz` archive. The whole workspace directory
 (one subdirectory per task, containing the raw files above) is also browsable directly at
-`http://localhost:58080/workspace/{taskId}/`.
+`http://localhost:58080/workspace/{taskId}/` (also requires the bearer token).
 
 ## Authoring Simulations
 
