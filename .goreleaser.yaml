@@ -10,7 +10,7 @@ before:
 builds:
   - id: gatling-server
     main: ./cmd/server
-    binary: gatling-server
+    binary: bin/gatling-server
     env:
       - CGO_ENABLED=0
     goos:
@@ -33,9 +33,9 @@ archives:
       - src: configs/*
         dst: configs
       - src: scripts/gatling-jar-runner.sh
-        dst: scripts/gatling-jar-runner.sh
+        dst: bin/gatling-jar-runner.sh
       - src: scripts/dist/run-server.sh
-        dst: run-server.sh
+        dst: bin/run-server.sh
       - src: server.key
       - src: server.crt
 

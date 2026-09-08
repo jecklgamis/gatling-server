@@ -53,7 +53,7 @@ Download a release for your platform from [GitHub Releases](https://github.com/j
 ```bash
 tar xzf gatling-server-<os>-<arch>-<version>.tar.gz
 cd gatling-server-<os>-<arch>-<version>
-API_TOKEN=some-secret-token ./run-server.sh
+API_TOKEN=some-secret-token ./bin/run-server.sh
 ```
 
 ### Verify it's up

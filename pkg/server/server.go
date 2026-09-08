@@ -53,7 +53,7 @@ func Start() {
 	configureEventNotifiers(eventBus, config.EventNotifiers)
 	uploaders := configureUploaders(config.Uploaders)
 
-	scriptsDir, _ := filepath.Abs(config.ScriptsDir)
+	scriptsDir, _ := filepath.Abs(env.GetOrElse("SCRIPTS_DIR", config.ScriptsDir))
 	gatling := gatling.NewGatling(scriptsDir)
 	taskManager := taskmanager.NewTaskManager(gatling, eventBus.EventC, uploaders)
 	if config.TaskTimeout > 0 {
