@@ -36,7 +36,7 @@ func printRoutes(router *mux.Router) {
 }
 
 func Start() {
-	appEnv := env.GetOrElse("APP_ENVIRONMENT", "dev")
+	appEnv := env.GetOrElse("APP_ENVIRONMENT", "prod")
 	config := ReadConfig(appEnv)
 	slog.SetLogLoggerLevel(ParseLogLevel(config.LogLevel))
 

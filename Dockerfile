@@ -5,8 +5,6 @@ LABEL org.opencontainers.image.authors="jecklgamis@gmail.com"
 RUN apt update -y && apt install -y openjdk-25-jdk-headless curl dumb-init openssl
 RUN rm -rf /var/lib/apt/lists/*
 
-ENV APP_ENVIRONMENT=dev
-
 EXPOSE 8080
 EXPOSE 8443
 
