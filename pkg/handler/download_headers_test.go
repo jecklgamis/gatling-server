@@ -10,7 +10,7 @@ import (
 
 func TestForceDownloadHeadersOverridesSniffedContentType(t *testing.T) {
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("<script>alert(1)</script>"))
+		_, _ = w.Write([]byte("<script>alert(1)</script>"))
 	})
 	req, _ := http.NewRequest("GET", "/uploads/some-id/evil.html", nil)
 	rr := httptest.NewRecorder()
