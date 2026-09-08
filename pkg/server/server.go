@@ -73,7 +73,8 @@ func Start() {
 
 	fileUploadHandler := handler.NewFileUploadHandler(uploadDir, apiToken)
 	router.HandleFunc("/upload", fileUploadHandler.Handle)
-	router.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
+	uploadsFileServer := handler.ForceDownloadHeaders(http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
+	router.PathPrefix("/uploads/").Handler(uploadsFileServer)
 
 	var s3ops s3.S3Ops
 	var allowedS3Buckets []string
