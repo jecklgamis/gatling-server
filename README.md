@@ -13,6 +13,7 @@ An API server for running [Gatling](https://gatling.io/) OSS load test simulatio
 * Endpoints for task metadata, console log, simulation log, and results
 * HTTP and SNS event notifiers for heartbeat and task lifecycle events
 * Docker image on Docker Hub, plus prebuilt binaries on [GitHub Releases](https://github.com/jecklgamis/gatling-server/releases)
+* Natural-language simulation submission via [gatling-mcp-server](https://github.com/jecklgamis/gatling-mcp-server) (see below)
 
 ## API Reference
 
@@ -187,6 +188,13 @@ A simulation run produces a console log, Gatling report, simulation log, and the
 if an S3 uploader is configured. The test report is a downloadable `tar.gz` archive. The whole workspace directory
 (one subdirectory per task, containing the raw files above) is also browsable directly at
 `http://localhost:58080/workspace/{taskId}/` (also requires the bearer token).
+
+## AI Integration
+
+[gatling-mcp-server](https://github.com/jecklgamis/gatling-mcp-server) wraps this API as an MCP (Model Context
+Protocol) server, so a simulation can be uploaded, submitted, monitored, and aborted just by describing what you
+want in plain English instead of hand-writing `curl` calls. It can be configured in any MCP-capable AI client -
+Claude Code, Claude.ai, Cursor, and others - by pointing it at the running gatling-mcp-server instance.
 
 ## Authoring Simulations
 
