@@ -12,6 +12,19 @@ scriptsDir: scripts
 workspaceDir: workspace
 uploadDir: uploads
 
+# Hosts /task/submit's http(s) downloader is allowed to fetch from, beyond
+# anything that resolves to a public IP. localhost/127.0.0.1/::1 support the
+# self-referential "upload then submit against /uploads" flow; add
+# gatling-server.jecklgamis.com so the same flow works against the live
+# domain, e.g. behind an ingress/load balancer where the pod can't reach
+# itself via localhost.
+taskSubmit:
+  allowedHttpHosts:
+    - localhost
+    - 127.0.0.1
+    - "::1"
+    - gatling-server.jecklgamis.com
+
 # Credentials gating the browsable /workspace/ and /uploads/ file listings
 # (HTTP Basic Auth). Both default to "default" if left unset.
 browseAuth:
