@@ -60,3 +60,11 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Name of the Secret holding API_TOKEN - either a user-supplied Secret
+(existingSecretName) or the one this chart creates.
+*/}}
+{{- define "gatling-server.secretName" -}}
+{{- default (include "gatling-server.fullname" .) .Values.existingSecretName }}
+{{- end }}

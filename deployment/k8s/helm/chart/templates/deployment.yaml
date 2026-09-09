@@ -33,6 +33,22 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gatling-server.secretName" . }}
+                  key: API_TOKEN
+            - name: BROWSE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gatling-server.secretName" . }}
+                  key: BROWSE_USERNAME
+            - name: BROWSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gatling-server.secretName" . }}
+                  key: BROWSE_PASSWORD
           ports:
             - name: http
               containerPort: 58080
@@ -47,6 +63,21 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/workspace
+              subPath: workspace
+            - name: data
+              mountPath: /app/uploads
+              subPath: uploads
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "gatling-server.fullname" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

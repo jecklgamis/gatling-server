@@ -11,5 +11,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['{{ include "gatling-server.fullname" . }}:{{ .Values.service.port }}']
+      args: ['{{ include "gatling-server.fullname" . }}:{{ .Values.service.port }}/probe/ready']
   restartPolicy: Never

@@ -10,10 +10,24 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "main"
 
-imagePullSecrets:
-  - name: dockerhub
+# jecklgamis/gatling-server is a public image; only set this if you're
+# pointing image.repository at a private registry/fork.
+imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+
+# API_TOKEN gates /task/upload, /task/submit, and the other /task/* endpoints
+# (Authorization: Bearer <apiToken>). browseUsername/browsePassword gate
+# /workspace/ and /uploads/ (HTTP Basic Auth) the same way. All three default
+# to "default", matching the app's own built-in fallback, so this works out
+# of the box but should be overridden for anything beyond a quick trial. Set
+# existingSecretName instead to source all three from a Secret you manage
+# yourself (must contain data/stringData keys named API_TOKEN,
+# BROWSE_USERNAME and BROWSE_PASSWORD) without putting them in values.yaml/git.
+apiToken: "default"
+browseUsername: "default"
+browsePassword: "default"
+existingSecretName: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -27,6 +41,8 @@ serviceAccount:
 podAnnotations: {}
 
 podSecurityContext: {}
+  # Set fsGroup if persistence.enabled and the volume needs to be writable by
+  # the container's non-root "app" user (see Dockerfile) on first mount.
   # fsGroup: 2000
 
 securityContext: {}
@@ -42,21 +58,24 @@ service:
   port: 80
 
 ingress:
-  enabled: false
-  className: ""
+  enabled: true
+  className: "nginx"
   annotations:
-#     kubernetes.io/ingress.class: "istio"
-     kubernetes.io/ingress.class: "nginx"
-    # kubernetes.io/tls-acme: "true"
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
   hosts:
-    - host: gatling-server.local
+    - host: gatling-server.jecklgamis.com
       paths:
         - path: /
           pathType: Prefix
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+  tls:
+    - secretName: gatling-server
+      hosts:
+        - gatling-server.jecklgamis.com
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -76,6 +95,19 @@ autoscaling:
   maxReplicas: 4
   targetCPUUtilizationPercentage: 80
   targetMemoryUtilizationPercentage: 80
+
+# gatling-server keeps task workspaces (uploaded jars, console/simulation
+# logs, results) on local disk with no other durability unless the S3
+# uploader is configured in the shipped config-prod.yaml. Enable this to
+# survive pod restarts; leave it off for disposable/CI use. Not meant to be
+# shared across replicas - keep replicaCount at 1 if enabled, since task
+# state is also kept in memory per-pod.
+persistence:
+  enabled: false
+  size: 10Gi
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
 
 nodeSelector: {}
 
