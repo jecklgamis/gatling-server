@@ -169,9 +169,9 @@ Claude Code, Claude.ai, Cursor, and others - by pointing it at the running gatli
 
 ## Authoring Simulations
 
-Gatling simulations are written in Scala. Simple simulations can be submitted as-is; for anything more involved, a
-build project (Maven, for example) makes packaging much easier. See the example projects for a working setup in your
-language of choice:
+Gatling simulations can be written in Scala, Java, or Kotlin. Simple simulations can be submitted as-is; for
+anything more involved, a build project (Maven, for example) makes packaging much easier. See the example projects
+for a working setup in your language of choice:
 
 * [gatling-scala-example](https://github.com/jecklgamis/gatling-scala-example)
 * [gatling-java-example](https://github.com/jecklgamis/gatling-java-example)
