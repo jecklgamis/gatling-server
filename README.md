@@ -72,6 +72,10 @@ unless the server was started with its own `API_TOKEN`; requests with a missing 
 Log verbosity is set via `logLevel` in `configs/config-<env>.yaml` (`debug`, `info`, `warn`, or `error`; defaults to
 `info` if unset or unrecognized).
 
+By default, per-request access logs are interleaved with the rest of the application's logs. Set `accessLogFile` in
+`configs/config-<env>.yaml` to a file path to route them there instead (as JSON lines), separate from the
+application log stream.
+
 ## Submitting a Simulation
 
 Simulations must be packaged as a self-contained (uber) jar containing the compiled simulation classes, resources,

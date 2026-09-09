@@ -16,10 +16,30 @@ import (
 	"github.com/jecklgamis/gatling-server/pkg/workspace"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 )
+
+// accessLogger returns a logger for the access-log middleware to use. If
+// accessLogFile is empty, access logs go wherever the rest of the
+// application's logs go (slog.Default()); otherwise they're routed to their
+// own file, so they can be rotated/shipped independently of the application
+// log stream.
+func accessLogger(accessLogFile string) *slog.Logger {
+	if accessLogFile == "" {
+		return slog.Default()
+	}
+	f, err := os.OpenFile(accessLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
+	if err != nil {
+		slog.Error("Unable to open access log file, logging access to the default logger instead",
+			"file", accessLogFile, "error", err)
+		return slog.Default()
+	}
+	slog.Info("Logging access requests to file", "file", accessLogFile)
+	return slog.New(slog.NewJSONHandler(f, nil))
+}
 
 func printRoutes(router *mux.Router) {
 	slog.Info("Available endpoints:")
@@ -120,7 +140,7 @@ func Start() {
 	router.PathPrefix("/workspace/").Handler(handler.RequireBasicAuth(http.StripPrefix("/workspace/", fs), browseUser, browsePass))
 	router.HandleFunc("/", handler.RootHandler)
 	printRoutes(router)
-	router.Use(accesslog.AccessLoggerMiddleware)
+	router.Use(accesslog.NewAccessLoggerMiddleware(accessLogger(config.AccessLogFile)))
 
 	slog.Info("Version", "version", version.BuildVersion)
 	if config.Server.Https.KeyFile != "" && config.Server.Https.CertFile != "" {

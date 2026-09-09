@@ -77,6 +77,7 @@ type Config struct {
 	LogLevel       string
 	TaskSubmit     TaskSubmitConfig
 	BrowseAuth     BrowseAuthConfig
+	AccessLogFile  string
 }
 
 // ParseLogLevel maps a config log level string (debug/info/warn/error, case
