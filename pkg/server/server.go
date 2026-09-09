@@ -91,11 +91,11 @@ func Start() {
 	httpUploadHandler := handler.NewHttpUploadHandler(workspace, taskManager, uploadDir, apiToken)
 	router.HandleFunc("/task/upload", httpUploadHandler.Handle)
 
-	browseUser := config.BrowseAuth.Username
+	browseUser := env.GetOrElse("BROWSE_USERNAME", config.BrowseAuth.Username)
 	if browseUser == "" {
 		browseUser = "default"
 	}
-	browsePass := config.BrowseAuth.Password
+	browsePass := env.GetOrElse("BROWSE_PASSWORD", config.BrowseAuth.Password)
 	if browsePass == "" {
 		browsePass = "default"
 	}

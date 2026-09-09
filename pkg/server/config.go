@@ -57,8 +57,9 @@ type TaskSubmitConfig struct {
 
 // BrowseAuthConfig holds the HTTP Basic Auth credentials gating the
 // browsable /workspace/ and /uploads/ file listings. Username and Password
-// each default to "default" when left unset, so the endpoints are usable
-// out of the box.
+// each default to "default" when left unset (here or via the BROWSE_USERNAME/
+// BROWSE_PASSWORD env vars, which take precedence over this config when set),
+// so the endpoints are usable out of the box.
 type BrowseAuthConfig struct {
 	Username string
 	Password string
