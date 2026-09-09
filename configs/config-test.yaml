@@ -42,6 +42,15 @@ browseAuth:
   username: default
   password: default
 
+# Per-request access logging. Disabled by default since it's noisy for most
+# deployments; set enabled: true to turn it on. When enabled, entries go to
+# `file` if set (as JSON lines, separate from the application log stream so
+# they can be rotated/shipped independently), or interleaved with the rest of
+# the application's logs otherwise.
+accessLog:
+  enabled: false
+  file: ""
+
 heartbeat:
   enabled: true
   frequency: 2m

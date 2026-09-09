@@ -48,6 +48,14 @@ type HeartbeatConfig struct {
 	Frequency time.Duration
 }
 
+// AccessLogConfig controls the per-request access-log middleware. Disabled by
+// default; when Enabled, access entries go to File if set, or interleaved
+// with the rest of the application's logs otherwise.
+type AccessLogConfig struct {
+	Enabled bool
+	File    string
+}
+
 // TaskSubmitConfig scopes what /task/submit is allowed to fetch, so a valid
 // API token can't be used to pivot the server into reaching arbitrary
 // internal/cloud-metadata hosts. AllowedHttpHosts defaults to
@@ -80,7 +88,7 @@ type Config struct {
 	LogLevel       string
 	TaskSubmit     TaskSubmitConfig
 	BrowseAuth     BrowseAuthConfig
-	AccessLogFile  string
+	AccessLog      AccessLogConfig
 }
 
 // ParseLogLevel maps a config log level string (debug/info/warn/error, case

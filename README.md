@@ -84,9 +84,9 @@ unless the server was started with its own `API_TOKEN`; requests with a missing 
 Log verbosity is set via `logLevel` in `configs/config-<env>.yaml` (`debug`, `info`, `warn`, or `error`; defaults to
 `info` if unset or unrecognized).
 
-By default, per-request access logs are interleaved with the rest of the application's logs. Set `accessLogFile` in
-`configs/config-<env>.yaml` to a file path to route them there instead (as JSON lines), separate from the
-application log stream.
+Per-request access logging is disabled by default. Set `accessLog.enabled: true` in `configs/config-<env>.yaml` to
+turn it on; set `accessLog.file` to a file path to route those entries there (as JSON lines), separate from the
+application log stream, or leave it empty to interleave them with the rest of the application's logs.
 
 ## Submitting a Simulation
 

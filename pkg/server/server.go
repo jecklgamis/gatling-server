@@ -140,7 +140,9 @@ func Start() {
 	router.PathPrefix("/workspace/").Handler(handler.RequireBasicAuth(http.StripPrefix("/workspace/", fs), browseUser, browsePass))
 	router.HandleFunc("/", handler.RootHandler)
 	printRoutes(router)
-	router.Use(accesslog.NewAccessLoggerMiddleware(accessLogger(config.AccessLogFile)))
+	if config.AccessLog.Enabled {
+		router.Use(accesslog.NewAccessLoggerMiddleware(accessLogger(config.AccessLog.File)))
+	}
 
 	slog.Info("Version", "version", version.BuildVersion)
 	if config.Server.Https.KeyFile != "" && config.Server.Https.CertFile != "" {

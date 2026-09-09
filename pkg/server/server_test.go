@@ -67,7 +67,8 @@ func TestAccessLogWritesToConfiguredFile(t *testing.T) {
 	go func() {
 		viper.Set("SERVER.HTTP.PORT", fmt.Sprintf("%d", port))
 		viper.Set("SERVER.HTTPS.PORT", fmt.Sprintf("%d", test.UnusedPort()))
-		viper.Set("ACCESSLOGFILE", accessLogFile)
+		viper.Set("ACCESSLOG.ENABLED", "true")
+		viper.Set("ACCESSLOG.FILE", accessLogFile)
 		Start()
 	}()
 	baseUrl := fmt.Sprintf("http://localhost:%d/", port)
