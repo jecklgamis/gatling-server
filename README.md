@@ -61,6 +61,17 @@ cd gatling-server-<os>-<arch>-<version>
 API_TOKEN=some-secret-token ./bin/run-server.sh
 ```
 
+### From source (for development)
+
+```bash
+./run-server.sh
+```
+
+Generates a self-signed TLS cert if one isn't already present, then runs `cmd/server/gatling-server.go` directly
+with `APP_ENVIRONMENT=dev` (loads `configs/config-dev.yaml`) and `SCRIPTS_DIR=scripts` - no build step, no `bin/`
+layout. This is distinct from `scripts/dist/run-server.sh`, which is bundled into release archives and expects the
+packaged `bin/` layout (`APP_ENVIRONMENT=prod`, `SCRIPTS_DIR=bin`).
+
 ### Verify it's up
 
 ```bash
