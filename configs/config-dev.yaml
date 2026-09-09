@@ -44,7 +44,7 @@ browseAuth:
 
 heartbeat:
   enabled: true
-  frequency: 30s
+  frequency: 2m
 
 eventNotifiers:
   - type: sns
