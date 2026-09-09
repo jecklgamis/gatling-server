@@ -6,7 +6,11 @@ replicaCount: 1
 
 image:
   repository: jecklgamis/gatling-server
-  pullPolicy: IfNotPresent
+  # image.tag defaults to a mutable tag ("main"), so IfNotPresent would let a
+  # node keep serving a stale cached image after a new push under the same
+  # tag - use a pinned/immutable tag (e.g. a commit SHA) if you want to go
+  # back to IfNotPresent.
+  pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: "main"
 
