@@ -1,5 +1,5 @@
 APP_NAME:=gatling-server
-VERSION:=$(shell cat chart/Chart.yaml | yq .appVersion)
+VERSION:=$(shell cat chart/Chart.yaml | yq .version)
 HELM_CHART=$(APP_NAME)-$(VERSION).tgz
 
 default:

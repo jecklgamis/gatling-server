@@ -73,7 +73,7 @@ ingress:
         - path: /
           pathType: Prefix
   tls:
-    - secretName: gatling-server
+    - secretName: gatling-server-tls
       hosts:
         - gatling-server.jecklgamis.com
 
