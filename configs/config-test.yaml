@@ -24,6 +24,17 @@ taskSubmit:
     - host: 127.0.0.1
     - host: "::1"
     - host: gatling-server.jecklgamis.com
+    # Example hosts requiring their own credentials (auth is optional per
+    # host; type is "basic" or "bearer"). Uncomment and edit to use:
+    # - host: some.internal.host
+    #   auth:
+    #     type: bearer
+    #     token: some-token
+    # - host: another.internal.host
+    #   auth:
+    #     type: basic
+    #     username: some-user
+    #     password: some-password
 
 # Credentials gating the browsable /workspace/ and /uploads/ file listings
 # (HTTP Basic Auth). Both default to "default" if left unset.
