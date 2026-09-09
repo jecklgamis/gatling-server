@@ -156,9 +156,9 @@ func createApiHandlerWith(s3Ops s3.S3Ops) http.Handler {
 }
 
 func TestCheckHttpHostAllowedForDefaultAllowlistedHost(t *testing.T) {
-	explicit, err := checkHttpHostAllowed("localhost", DefaultAllowedHttpHosts)
+	entry, err := checkHttpHostAllowed("localhost", DefaultAllowedHttpHosts)
 	test.Assertf(t, err == nil, "expecting localhost to be allowed : %v", err)
-	test.Assertf(t, explicit, "expecting localhost to be an explicit allowlist match")
+	test.Assertf(t, entry != nil, "expecting localhost to be an explicit allowlist match")
 }
 
 func TestCheckHttpHostAllowedRejectsPrivateIP(t *testing.T) {
@@ -172,9 +172,54 @@ func TestCheckHttpHostAllowedRejectsLinkLocalMetadataIP(t *testing.T) {
 }
 
 func TestCheckHttpHostAllowedAllowsPublicIP(t *testing.T) {
-	explicit, err := checkHttpHostAllowed("1.1.1.1", DefaultAllowedHttpHosts)
+	entry, err := checkHttpHostAllowed("1.1.1.1", DefaultAllowedHttpHosts)
 	test.Assertf(t, err == nil, "expecting public IP to be allowed : %v", err)
-	test.Assertf(t, !explicit, "expecting public IP fallback match to not be reported as explicit")
+	test.Assertf(t, entry == nil, "expecting public IP fallback match to not return an allowlist entry")
+}
+
+func TestCheckHttpHostAllowedReturnsMatchedEntrysAuth(t *testing.T) {
+	hosts := []AllowedHttpHost{{Host: "artifacts.example.com", Auth: &HttpHostAuth{Type: "bearer", Token: "some-token"}}}
+	entry, err := checkHttpHostAllowed("artifacts.example.com", hosts)
+	test.Assertf(t, err == nil, "expecting host to be allowed : %v", err)
+	test.Assertf(t, entry != nil && entry.Auth != nil && entry.Auth.Token == "some-token",
+		"expecting matched entry's auth to be returned")
+}
+
+func TestDownloadHttpFileAttachesBasicAuth(t *testing.T) {
+	var gotUser, gotPass string
+	var gotOk bool
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUser, gotPass, gotOk = r.BasicAuth()
+		w.Write([]byte("some-content"))
+	}))
+	defer ts.Close()
+	_, err := downloadHttpFile(ts.URL+"/some.jar", tempDir(), &HttpHostAuth{Type: "basic", Username: "u", Password: "p"})
+	test.Assertf(t, err == nil, "unexpected error : %v", err)
+	test.Assertf(t, gotOk && gotUser == "u" && gotPass == "p", "expecting basic auth credentials to be sent")
+}
+
+func TestDownloadHttpFileAttachesBearerAuth(t *testing.T) {
+	var gotAuthHeader string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuthHeader = r.Header.Get("Authorization")
+		w.Write([]byte("some-content"))
+	}))
+	defer ts.Close()
+	_, err := downloadHttpFile(ts.URL+"/some.jar", tempDir(), &HttpHostAuth{Type: "bearer", Token: "some-token"})
+	test.Assertf(t, err == nil, "unexpected error : %v", err)
+	test.Assertf(t, gotAuthHeader == "Bearer some-token", "unexpected Authorization header %q", gotAuthHeader)
+}
+
+func TestDownloadHttpFileSendsNoAuthWhenNil(t *testing.T) {
+	var gotAuthHeader string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuthHeader = r.Header.Get("Authorization")
+		w.Write([]byte("some-content"))
+	}))
+	defer ts.Close()
+	_, err := downloadHttpFile(ts.URL+"/some.jar", tempDir(), nil)
+	test.Assertf(t, err == nil, "unexpected error : %v", err)
+	test.Assertf(t, gotAuthHeader == "", "expecting no Authorization header, got %q", gotAuthHeader)
 }
 
 func TestIsAllowedBucketMatch(t *testing.T) {

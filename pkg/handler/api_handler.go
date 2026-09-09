@@ -25,10 +25,29 @@ const (
 	httpDownloadTimeout   = 5 * time.Minute
 )
 
+// HttpHostAuth is the credential to attach when downloading from a specific
+// allowlisted host. Type is "basic" (Username/Password) or "bearer" (Token).
+type HttpHostAuth struct {
+	Type     string
+	Username string
+	Password string
+	Token    string
+}
+
+// AllowedHttpHost is one entry in ApiHandler's http(s) download allowlist.
+// Auth is optional; when nil, a host still gets the handler's own
+// BrowseUsername/BrowsePassword attached (see ApiHandler doc comment) rather
+// than nothing, so the self-referential /uploads flow keeps working without
+// needing explicit per-host config.
+type AllowedHttpHost struct {
+	Host string
+	Auth *HttpHostAuth
+}
+
 // DefaultAllowedHttpHosts is used when no explicit allowlist is configured,
 // so the documented "upload then submit against http://<self>/uploads/..."
 // flow keeps working out of the box.
-var DefaultAllowedHttpHosts = []string{"localhost", "127.0.0.1", "::1"}
+var DefaultAllowedHttpHosts = []AllowedHttpHost{{Host: "localhost"}, {Host: "127.0.0.1"}, {Host: "::1"}}
 
 // ApiHandler accepts a generic task submission request whose Url may point to
 // either an http(s) location or an s3:// location, downloads the referenced
@@ -44,21 +63,21 @@ type ApiHandler struct {
 	TaskOps          taskmanager.Ops
 	s3Ops            s3.S3Ops
 	ApiToken         string
-	AllowedHttpHosts []string
+	AllowedHttpHosts []AllowedHttpHost
 	AllowedS3Buckets []string
 	// BrowseUsername/BrowsePassword are the HTTP Basic Auth credentials
-	// gating /uploads/, attached automatically when downloading from a host
-	// in AllowedHttpHosts (the self-referential "upload then submit against
-	// http://<self>/uploads/..." flow) so that flow keeps working now that
-	// /uploads/ requires auth. Never sent to hosts outside that explicit
-	// allowlist, so this can't leak the credentials to a third party.
+	// gating /uploads/, attached when downloading from an AllowedHttpHosts
+	// entry that doesn't specify its own Auth (the self-referential "upload
+	// then submit against http://<self>/uploads/..." flow) so that flow
+	// keeps working now that /uploads/ requires auth. Never sent to hosts
+	// outside the explicit allowlist, so this can't leak to a third party.
 	BrowseUsername string
 	BrowsePassword string
 	authLimiter    *authLimiter
 }
 
 func NewApiHandler(workspaceOps workspace.Ops, taskOps taskmanager.Ops, s3Ops s3.S3Ops, apiToken string,
-	allowedHttpHosts []string, allowedS3Buckets []string, browseUsername string, browsePassword string) *ApiHandler {
+	allowedHttpHosts []AllowedHttpHost, allowedS3Buckets []string, browseUsername string, browsePassword string) *ApiHandler {
 	if allowedHttpHosts == nil {
 		allowedHttpHosts = DefaultAllowedHttpHosts
 	}
@@ -176,15 +195,19 @@ func (h *ApiHandler) download(rawUrl string, dstDir string) (*string, error) {
 		}
 		return h.s3Ops.DownloadUrl(rawUrl, dstDir)
 	case "http", "https":
-		explicit, err := checkHttpHostAllowed(u.Hostname(), h.AllowedHttpHosts)
+		entry, err := checkHttpHostAllowed(u.Hostname(), h.AllowedHttpHosts)
 		if err != nil {
 			return nil, err
 		}
-		basicUser, basicPass := "", ""
-		if explicit {
-			basicUser, basicPass = h.BrowseUsername, h.BrowsePassword
+		var auth *HttpHostAuth
+		if entry != nil {
+			if entry.Auth != nil {
+				auth = entry.Auth
+			} else if h.BrowseUsername != "" || h.BrowsePassword != "" {
+				auth = &HttpHostAuth{Type: "basic", Username: h.BrowseUsername, Password: h.BrowsePassword}
+			}
 		}
-		return downloadHttpFile(rawUrl, dstDir, basicUser, basicPass)
+		return downloadHttpFile(rawUrl, dstDir, auth)
 	default:
 		return nil, fmt.Errorf("unsupported url scheme %q", u.Scheme)
 	}
@@ -206,31 +229,32 @@ func isAllowedBucket(bucket string, allowedBuckets []string) bool {
 // pivot the server into fetching internal/cloud-metadata resources. A host
 // explicitly present in allowedHosts is always permitted (this is how the
 // documented "submit a URL pointing back at my own /uploads" flow keeps
-// working) and reported back as such via the explicit return value; anything
-// else must resolve only to public IP addresses.
-func checkHttpHostAllowed(host string, allowedHosts []string) (explicit bool, err error) {
-	for _, allowed := range allowedHosts {
-		if strings.EqualFold(allowed, host) {
-			return true, nil
+// working) and its allowlist entry (including any per-host Auth) is
+// returned; anything else must resolve only to public IP addresses, and gets
+// no entry (and therefore no credentials) back.
+func checkHttpHostAllowed(host string, allowedHosts []AllowedHttpHost) (*AllowedHttpHost, error) {
+	for i := range allowedHosts {
+		if strings.EqualFold(allowedHosts[i].Host, host) {
+			return &allowedHosts[i], nil
 		}
 	}
 	ips, err := net.LookupIP(host)
 	if err != nil {
-		return false, fmt.Errorf("unable to resolve host %q: %w", host, err)
+		return nil, fmt.Errorf("unable to resolve host %q: %w", host, err)
 	}
 	for _, ip := range ips {
 		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
-			return false, fmt.Errorf("host %q resolves to a disallowed address %s", host, ip)
+			return nil, fmt.Errorf("host %q resolves to a disallowed address %s", host, ip)
 		}
 	}
-	return false, nil
+	return nil, nil
 }
 
-// downloadHttpFile fetches rawUrl into dstDir. When basicUser/basicPass are
-// non-empty they're attached as HTTP Basic Auth credentials on the outgoing
-// request - the caller is responsible for only passing them for a trusted,
-// explicitly allow-listed host (see checkHttpHostAllowed).
-func downloadHttpFile(rawUrl string, dstDir string, basicUser string, basicPass string) (*string, error) {
+// downloadHttpFile fetches rawUrl into dstDir. When auth is non-nil, its
+// credentials are attached to the outgoing request - the caller is
+// responsible for only passing auth belonging to a trusted, explicitly
+// allow-listed host (see checkHttpHostAllowed).
+func downloadHttpFile(rawUrl string, dstDir string, auth *HttpHostAuth) (*string, error) {
 	u, err := url.Parse(rawUrl)
 	if err != nil {
 		return nil, err
@@ -243,8 +267,15 @@ func downloadHttpFile(rawUrl string, dstDir string, basicUser string, basicPass 
 	if err != nil {
 		return nil, err
 	}
-	if basicUser != "" || basicPass != "" {
-		req.SetBasicAuth(basicUser, basicPass)
+	if auth != nil {
+		switch strings.ToLower(auth.Type) {
+		case "basic":
+			req.SetBasicAuth(auth.Username, auth.Password)
+		case "bearer":
+			req.Header.Set("Authorization", "Bearer "+auth.Token)
+		default:
+			slog.Warn("Unrecognized http host auth type, downloading unauthenticated", "type", auth.Type)
+		}
 	}
 	client := &http.Client{Timeout: httpDownloadTimeout}
 	resp, err := client.Do(req)

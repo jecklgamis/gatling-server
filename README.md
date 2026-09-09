@@ -146,9 +146,22 @@ addresses (including the cloud metadata endpoint) are rejected unless the host i
 ```yaml
 taskSubmit:
   allowedHttpHosts:
-    - localhost
-    - some.internal.host
+    - host: localhost
+    - host: some.internal.host
+      auth:
+        type: bearer
+        token: some-token
+    - host: another.internal.host
+      auth:
+        type: basic
+        username: some-user
+        password: some-password
 ```
+
+`auth` is optional per host and supports `basic` (`username`/`password`) or `bearer` (`token`); credentials are only
+ever sent to their own host, never to others on the list or to a public-IP fallback match. A host with no `auth`
+(like `localhost` above) gets the `browseAuth` credentials attached instead, which is what makes the self-referential
+`/uploads` flow keep working now that `/uploads/` itself requires Basic Auth.
 
 ### Aborting a task
 

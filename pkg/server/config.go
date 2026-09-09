@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/jecklgamis/gatling-server/pkg/handler"
 	"log/slog"
 	"os"
 	"strings"
@@ -50,9 +51,10 @@ type HeartbeatConfig struct {
 // TaskSubmitConfig scopes what /task/submit is allowed to fetch, so a valid
 // API token can't be used to pivot the server into reaching arbitrary
 // internal/cloud-metadata hosts. AllowedHttpHosts defaults to
-// handler.DefaultAllowedHttpHosts when left empty.
+// handler.DefaultAllowedHttpHosts when left empty. Each entry's auth (if any)
+// is only ever sent to that entry's own host - see handler.AllowedHttpHost.
 type TaskSubmitConfig struct {
-	AllowedHttpHosts []string
+	AllowedHttpHosts []handler.AllowedHttpHost
 }
 
 // BrowseAuthConfig holds the HTTP Basic Auth credentials gating the
