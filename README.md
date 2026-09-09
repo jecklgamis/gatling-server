@@ -13,7 +13,7 @@ An API server for running [Gatling](https://gatling.io/) OSS load test simulatio
 * Endpoints for task metadata, console log, simulation log, and results
 * HTTP and SNS event notifiers for heartbeat and task lifecycle events
 * Docker image on Docker Hub, plus prebuilt binaries on [GitHub Releases](https://github.com/jecklgamis/gatling-server/releases)
-* Natural-language simulation submission via [gatling-mcp-server](https://github.com/jecklgamis/gatling-mcp-server) (see below)
+* AI integration simulation submission via [gatling-mcp-server](https://github.com/jecklgamis/gatling-mcp-server) (see below)
 
 ## API Reference
 
