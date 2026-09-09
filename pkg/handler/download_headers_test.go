@@ -23,6 +23,20 @@ func TestForceDownloadHeadersOverridesSniffedContentType(t *testing.T) {
 		"unexpected content disposition %q", rr.Header().Get("Content-Disposition"))
 }
 
+func TestForceDownloadHeadersLeavesDirectoryListingsAlone(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte("<pre></pre>"))
+	})
+	req, _ := http.NewRequest("GET", "/uploads/", nil)
+	rr := httptest.NewRecorder()
+	ForceDownloadHeaders(inner).ServeHTTP(rr, req)
+	test.Assertf(t, rr.Header().Get("Content-Disposition") == "",
+		"expecting no content disposition on a directory listing, got %q", rr.Header().Get("Content-Disposition"))
+	test.Assertf(t, strings.HasPrefix(rr.Header().Get("Content-Type"), "text/html"),
+		"expecting the inner handler's content type to pass through, got %q", rr.Header().Get("Content-Type"))
+}
+
 func TestSanitizeFilenameStripsQuotesAndNewlines(t *testing.T) {
 	name := sanitizeFilename(`/uploads/some-id/foo"bar` + "\r\n.txt")
 	test.Assertf(t, !strings.ContainsAny(name, "\"\r\n"), "unexpected sanitized name %q", name)
