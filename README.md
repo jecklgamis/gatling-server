@@ -4,10 +4,6 @@
 
 An API server for running [Gatling](https://gatling.io/) OSS load test simulations.
 
-This README covers **developing** gatling-server. For running, deploying, using the API, and AI integration, see
-the docs site: **[jecklgamis.github.io/gatling-server](https://jecklgamis.github.io/gatling-server/)**
-(or browse [`docs/`](docs) directly).
-
 ## Features
 
 * Runs simulations packaged as a self-contained jar (simulation classes and resources bundled together)
