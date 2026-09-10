@@ -4,6 +4,10 @@
 
 An API server for running [Gatling](https://gatling.io/) OSS load test simulations.
 
+This README covers **developing** gatling-server. For running, deploying, using the API, and AI integration, see
+the docs site: **[jecklgamis.github.io/gatling-server](https://jecklgamis.github.io/gatling-server/)**
+(or browse [`docs/`](docs) directly).
+
 ## Features
 
 * Runs simulations packaged as a self-contained jar (simulation classes and resources bundled together)
@@ -12,28 +16,12 @@ An API server for running [Gatling](https://gatling.io/) OSS load test simulatio
 * Artifact upload to S3 (metadata, console log, results, etc.)
 * Endpoints for task metadata, console log, simulation log, and results
 * HTTP and SNS event notifiers for heartbeat and task lifecycle events
-* Docker image on Docker Hub, plus prebuilt binaries on [GitHub Releases](https://github.com/jecklgamis/gatling-server/releases)
-* AI integration simulation submission via [gatling-mcp-server](https://github.com/jecklgamis/gatling-mcp-server) (see below)
+* Docker image on Docker Hub, plus prebuilt binaries and a Helm chart
+* AI integration via [gatling-mcp-server](https://github.com/jecklgamis/gatling-mcp-server)
 
 ## Getting Started
 
-### Using Docker
-
-```bash
-docker run -it --name gatling-server -p 58080:58080 -e API_TOKEN=some-secret-token jecklgamis/gatling-server:main
-```
-
-### Using a prebuilt binary
-
-Download a release for your platform from [GitHub Releases](https://github.com/jecklgamis/gatling-server/releases), then:
-
-```bash
-tar xzf gatling-server-<os>-<arch>-<version>.tar.gz
-cd gatling-server-<os>-<arch>-<version>
-API_TOKEN=some-secret-token ./bin/run-server.sh
-```
-
-### From source (for development)
+### From Source (for development)
 
 ```bash
 ./run-server.sh
@@ -44,7 +32,7 @@ with `APP_ENVIRONMENT=dev` (loads `configs/config-dev.yaml`) and `SCRIPTS_DIR=sc
 layout. This is distinct from `scripts/dist/run-server.sh`, which is bundled into release archives and expects the
 packaged `bin/` layout (`APP_ENVIRONMENT=prod`, `SCRIPTS_DIR=bin`).
 
-### Verify it's up
+### Verify it's Up
 
 ```bash
 curl http://localhost:58080/buildInfo
@@ -60,148 +48,15 @@ Per-request access logging is disabled by default. Set `accessLog.enabled: true`
 turn it on; set `accessLog.file` to a file path to route those entries there (as JSON lines), separate from the
 application log stream, or leave it empty to interleave them with the rest of the application's logs.
 
-## Submitting a Simulation
-
-Simulations must be packaged as a self-contained (uber) jar containing the compiled simulation classes, resources,
-and all dependencies — including Scala and Gatling itself — since the server runs it directly off that jar's
-classpath. If you're using Maven, the [maven-shade-plugin](https://maven.apache.org/plugins/maven-shade-plugin/) can
-build this for you; see [gatling-scala-example](https://github.com/jecklgamis/gatling-scala-example) for a working
-setup that produces `target/gatling-scala-example.jar`.
-
-### Via HTTP upload
+### Testing
 
 ```bash
-curl -v \
-  -H "Authorization: Bearer ${API_TOKEN}" \
-  -F "file=@target/gatling-scala-example.jar" \
-  -F "simulation=gatling.test.example.simulation.ExampleSimulation" \
-  -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPerSecond=10" \
-  http://localhost:58080/task/upload
+go test -short ./...   # short tests
+go test ./...          # all tests, including S3 integration tests requiring AWS_REGION/*_S3_URL env vars
 ```
 
-The response includes a `taskId`, used to query the server for artifacts such as console logs or Gatling reports.
+## Documentation
 
-### Via a generic submit (upload once, submit anywhere)
-
-Upload a jar to get a URL back, then submit a task referencing any http(s) or s3 URL — including the one you just
-got:
-
-```bash
-curl -H "Authorization: Bearer ${API_TOKEN}" -F "file=@target/gatling-scala-example.jar" http://localhost:58080/upload
-# => {"id":"<uuid>"}
-```
-
-Uploaded files are stored at `uploads/<uuid>/<filename>` and served directly (HTTP Basic Auth, see above) from
-`/uploads/<uuid>/<filename>`.
-
-```bash
-curl -v -H "Content-Type: application/json" http://localhost:58080/task/submit -d @request.json
-```
-
-`request.json`:
-
-```json
-{
-  "url": "http://localhost:58080/uploads/<uuid>/gatling-scala-example.jar",
-  "simulation": "gatling.test.example.simulation.ExampleSimulation",
-  "javaOpts": "-DbaseUrl=http://localhost:8080 -DdurationMin=0.10 -DrequestPerSecond=1"
-}
-```
-
-`url` also accepts `s3://...` locations. This requires the S3 downloader to be enabled *and* scoped to specific
-bucket(s) in `configs/config-<env>.yaml` — s3 downloads are rejected by default until `allowedBuckets` is set,
-so a valid API token can't be used to read arbitrary buckets your AWS credentials can reach:
-
-```yaml
-downloaders:
-  s3:
-    enabled: true
-    configMap:
-      region: some-region
-      allowedBuckets: gatling-server-incoming,another-bucket
-```
-
-Similarly, `url` for http(s) downloads is restricted to `localhost`/`127.0.0.1`/`::1` (so the self-referential
-`/uploads` flow above keeps working) plus anything that resolves to a public IP — private, loopback, and link-local
-addresses (including the cloud metadata endpoint) are rejected unless the host is explicitly added to
-`taskSubmit.allowedHttpHosts` in `configs/config-<env>.yaml`:
-
-```yaml
-taskSubmit:
-  allowedHttpHosts:
-    - host: localhost
-    - host: some.internal.host
-      auth:
-        type: bearer
-        token: some-token
-    - host: another.internal.host
-      auth:
-        type: basic
-        username: some-user
-        password: some-password
-```
-
-`auth` is optional per host and supports `basic` (`username`/`password`) or `bearer` (`token`); credentials are only
-ever sent to their own host, never to others on the list or to a public-IP fallback match. A host with no `auth`
-(like `localhost` above) gets the `browseAuth` credentials attached instead, which is what makes the self-referential
-`/uploads` flow keep working now that `/uploads/` itself requires Basic Auth.
-
-### Aborting a task
-
-```bash
-curl -X POST -H "Authorization: Bearer ${API_TOKEN}" http://localhost:58080/task/abort/{taskId}
-```
-
-## Retrieving Artifacts
-
-A simulation run produces a console log, Gatling report, simulation log, and the original request's metadata (see the
-`/task/*` rows in the API Reference above). These are available directly from the server, and are also uploaded to S3
-if an S3 uploader is configured. The test report is a downloadable `tar.gz` archive. The whole workspace directory
-(one subdirectory per task, containing the raw files above) is also browsable directly at
-`http://localhost:58080/workspace/{taskId}/` (also requires the bearer token).
-
-## AI Integration
-
-[gatling-mcp-server](https://github.com/jecklgamis/gatling-mcp-server) wraps this API as an MCP (Model Context
-Protocol) server, so a simulation can be uploaded, submitted, monitored, and aborted just by describing what you
-want in plain English instead of hand-writing `curl` calls. It can be configured in any MCP-capable AI client -
-Claude Code, Claude.ai, Cursor, and others - by pointing it at the running gatling-mcp-server instance.
-
-## Authoring Simulations
-
-Gatling simulations can be written in Scala, Java, or Kotlin. Simple simulations can be submitted as-is; for
-anything more involved, a build project (Maven, for example) makes packaging much easier. See the example projects
-for a working setup in your language of choice:
-
-* [gatling-scala-example](https://github.com/jecklgamis/gatling-scala-example)
-* [gatling-java-example](https://github.com/jecklgamis/gatling-java-example)
-* [gatling-kotlin-example](https://github.com/jecklgamis/gatling-kotlin-example)
-
-## API Reference
-
-| Endpoint                         | Method | Auth   | Body / Params                                              | Description                                                     |
-|-----------------------------------|--------|--------|--------------------------------------------------------------|-------------------------------------------------------------------|
-| `/`                                | GET    | —      | —                                                            | Root info                                                          |
-| `/buildInfo`                       | GET    | —      | —                                                            | Version/branch info                                                |
-| `/probe/ready`                     | GET    | —      | —                                                            | Readiness probe                                                    |
-| `/probe/live`                      | GET    | —      | —                                                            | Liveness probe                                                     |
-| `/task/upload`                     | POST   | Bearer | multipart: `file`, `simulation`, `javaOpts`                   | Upload a jar and submit + run it in one call                       |
-| `/upload`                          | POST   | Bearer | multipart: `file`                                            | Upload any file; returns `{"id": "<uuid>"}`                        |
-| `/uploads/{id}/{filename}`         | GET    | Basic  | —                                                            | Download/browse an uploaded file                                   |
-| `/task/submit`                     | POST   | Bearer | JSON: `simulation`, `javaOpts`, `url` (http(s) or s3)         | Download the jar from `url` and submit + run it                    |
-| `/task/{taskId}`                   | GET    | Bearer | —                                                            | Task runtime status                                                 |
-| `/task/metadata/{taskId}`          | GET    | Bearer | —                                                            | Original submission metadata                                        |
-| `/task/console/{taskId}`           | GET    | Bearer | —                                                            | Raw JVM console log                                                 |
-| `/task/simulationLog/{taskId}`     | GET    | Bearer | —                                                            | Gatling's own simulation log                                        |
-| `/task/results/{taskId}`           | GET    | Bearer | —                                                            | Results archive (`results.tar.gz`)                                  |
-| `/task/abort/{taskId}`             | POST   | Bearer | —                                                            | Kill a running task                                                 |
-| `/workspace/{taskId}/...`          | GET    | Basic  | —                                                            | Browse raw task workspace files                                     |
-| `/blackhole`                       | POST   | —      | —                                                            | No-op sink (default HTTP event-notifier target)                     |
-
-`Bearer` means `Authorization: Bearer <API_TOKEN>` is required. `Basic` means HTTP Basic Auth is required, using
-`browseAuth.username`/`browseAuth.password` from `configs/config-<env>.yaml` — or the `BROWSE_USERNAME`/
-`BROWSE_PASSWORD` env vars, which take precedence when set. All three (`API_TOKEN`, `BROWSE_USERNAME`,
-`BROWSE_PASSWORD`) default to `default` if left unset. Basic Auth is used for these two endpoints specifically
-because they're meant to be browsed directly: the browser's native login prompt lets you click through file
-listings without attaching a header by hand. Either scheme's missing/invalid credentials get `401 Unauthorized`,
-and repeated failures from the same client are rate-limited with `429 Too Many Requests`.
+Running it with Docker or a prebuilt binary, deploying it to Kubernetes, the full HTTP API reference, and AI
+integration via gatling-mcp-server all live in the docs site:
+**[jecklgamis.github.io/gatling-server](https://jecklgamis.github.io/gatling-server/)** (source in [`docs/`](docs)).
