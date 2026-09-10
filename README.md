@@ -15,40 +15,52 @@ An API server for running [Gatling](https://gatling.io/) OSS load test simulatio
 * Docker image on Docker Hub, plus prebuilt binaries and a Helm chart
 * AI integration via [gatling-mcp-server](https://github.com/jecklgamis/gatling-mcp-server)
 
+## Quick Start
+
+### 1. Run gatling-server
+
+```bash
+docker run -it --name gatling-server -p 58080:58080 -e API_TOKEN=some-secret-token jecklgamis/gatling-server:main
+```
+
+### 2. Build a simulation jar
+
+```bash
+git clone https://github.com/jecklgamis/gatling-scala-example.git
+cd gatling-scala-example
+./mvnw clean package
+```
+
+This produces a self-contained `target/gatling-scala-example.jar` (simulation classes, resources, and all
+dependencies - including Scala and Gatling itself - bundled together).
+
+### 3. Submit it
+
+```bash
+curl -v \
+  -H "Authorization: Bearer some-secret-token" \
+  -F "file=@target/gatling-scala-example.jar" \
+  -F "simulation=gatling.test.example.simulation.ExampleSimulation" \
+  -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPerSecond=10" \
+  http://localhost:58080/task/upload
+```
+
+The response includes a `taskId` - poll `http://localhost:58080/task/{taskId}` for status.
+
+### 4. Browse the Console Log and Report
+
+Open `http://localhost:58080/workspace/{taskId}/` in a browser to view the raw task workspace - console log,
+Gatling report, and simulation log included. It's protected by HTTP Basic Auth (username/password both `default`
+unless `BROWSE_USERNAME`/`BROWSE_PASSWORD` were set) - your browser will prompt for them.
+
+See the [docs site](https://jecklgamis.github.io/gatling-server/) for deployment options and AI integration.
+
 ## Getting Started
 
-### From Source (for development)
-
 ```bash
+git clone https://github.com/jecklgamis/gatling-server.git
+cd gatling-server
 ./run-server.sh
-```
-
-Generates a self-signed TLS cert if one isn't already present, then runs `cmd/server/gatling-server.go` directly
-with `APP_ENVIRONMENT=dev` (loads `configs/config-dev.yaml`) and `SCRIPTS_DIR=scripts` - no build step, no `bin/`
-layout. This is distinct from `scripts/dist/run-server.sh`, which is bundled into release archives and expects the
-packaged `bin/` layout (`APP_ENVIRONMENT=prod`, `SCRIPTS_DIR=bin`).
-
-### Verify it's Up
-
-```bash
-curl http://localhost:58080/buildInfo
-```
-
-HTTP uploads require an API token, sent as a bearer token in the `Authorization` header. It defaults to `default`
-unless the server was started with its own `API_TOKEN`; requests with a missing or invalid token get `401 Unauthorized`.
-
-Log verbosity is set via `logLevel` in `configs/config-<env>.yaml` (`debug`, `info`, `warn`, or `error`; defaults to
-`info` if unset or unrecognized).
-
-Per-request access logging is disabled by default. Set `accessLog.enabled: true` in `configs/config-<env>.yaml` to
-turn it on; set `accessLog.file` to a file path to route those entries there (as JSON lines), separate from the
-application log stream, or leave it empty to interleave them with the rest of the application's logs.
-
-### Testing
-
-```bash
-go test -short ./...   # short tests
-go test ./...          # all tests, including S3 integration tests requiring AWS_REGION/*_S3_URL env vars
 ```
 
 ## Documentation

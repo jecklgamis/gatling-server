@@ -17,6 +17,48 @@ tests, project layout), see the [repo's README](https://github.com/jecklgamis/ga
 * HTTP and SNS event notifiers for heartbeat and task lifecycle events
 * Docker image on Docker Hub, plus prebuilt binaries and a Helm chart
 
+## Quick Start
+
+### 1. Run gatling-server
+
+```bash
+docker run -it --name gatling-server -p 58080:58080 -e API_TOKEN=some-secret-token jecklgamis/gatling-server:main
+```
+
+### 2. Build a simulation jar
+
+```bash
+git clone https://github.com/jecklgamis/gatling-scala-example.git
+cd gatling-scala-example
+./mvnw clean package
+```
+
+This produces a self-contained `target/gatling-scala-example.jar` (simulation classes, resources, and all
+dependencies - including Scala and Gatling itself - bundled together).
+
+### 3. Submit it
+
+```bash
+curl -v \
+  -H "Authorization: Bearer some-secret-token" \
+  -F "file=@target/gatling-scala-example.jar" \
+  -F "simulation=gatling.test.example.simulation.ExampleSimulation" \
+  -F "javaOpts=-DbaseUrl=http://localhost:8080 -DdurationMin=1 -DrequestPerSecond=10" \
+  http://localhost:58080/task/upload
+```
+
+The response includes a `taskId` - poll `http://localhost:58080/task/{taskId}` for status.
+
+### 4. Browse the Console Log and Report
+
+Open `http://localhost:58080/workspace/{taskId}/` in a browser to view the raw task workspace - console log,
+Gatling report, and simulation log included. It's protected by HTTP Basic Auth (username/password both `default`
+unless `BROWSE_USERNAME`/`BROWSE_PASSWORD` were set) - your browser will prompt for them.
+
+See [Usage](usage.md) for retrieving these same artifacts via the API instead of a browser, [Deployment](deployment.md)
+for other ways to run gatling-server, and [AI Integration](ai-integration.md) to drive this whole flow from an AI
+agent instead of curl.
+
 ## Where to go next
 
 - **[Deployment](deployment.md)** - run it with Docker, a prebuilt binary, or deploy it to Kubernetes.
